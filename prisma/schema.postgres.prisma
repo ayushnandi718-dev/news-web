@@ -1,0 +1,225 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         String    @default("REPORTER")
+  bio          String?
+  avatarUrl    String?
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  articles     Article[]
+  media        Media[]
+}
+
+model Category {
+  id                 String    @id @default(cuid())
+  slug               String    @unique
+  name               String
+  description        String?
+  priority           Int       @default(0)
+  freshnessOverrides Json?
+  articles           Article[]
+
+  @@index([slug])
+}
+
+model Article {
+  id               String   @id @default(cuid())
+  title            String
+  slug             String   @unique
+  excerpt          String
+  content          String
+  featuredImage    String?
+  categoryId       String
+  category         Category @relation(fields: [categoryId], references: [id])
+  authorId         String?
+  author           User?    @relation(fields: [authorId], references: [id])
+  status           String   @default("DRAFT")
+  publishedAt      DateTime?
+  scheduledAt      DateTime?
+  isBreaking       Boolean  @default(false)
+  breakingUntil    DateTime?
+  breakingPriority Int      @default(0)
+  isFeatured       Boolean  @default(false)
+  editorialPriority Int     @default(0)
+  views            Int      @default(0)
+  shares           Int      @default(0)
+  commentsCount    Int      @default(0)
+  sourceName       String?
+  sourceUrl        String?
+  canonicalUrl     String?
+  sourceId         String?
+  imageCaption     String?
+  imageCredit      String?
+  commentsEnabled  Boolean @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tags          ArticleTag[]
+  importedItems ImportedItem[]
+  comments      Comment[]
+  viewEvents    ViewEvent[]
+  shareEvents   ShareEvent[]
+
+  @@index([publishedAt])
+  @@index([status])
+  @@index([categoryId])
+  @@index([isBreaking])
+  @@index([isFeatured])
+  @@index([status, publishedAt])
+  @@index([categoryId, status, publishedAt])
+  @@index([isBreaking, breakingUntil])
+}
+
+model Tag {
+  id       String       @id @default(cuid())
+  slug     String       @unique
+  name     String
+  articles ArticleTag[]
+
+  @@index([slug])
+}
+
+model ArticleTag {
+  articleId String
+  tagId     String
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, tagId])
+  @@index([tagId])
+}
+
+model Media {
+  id           String   @id @default(cuid())
+  url          String
+  provider     String   @default("local")
+  externalId   String?
+  alt          String?
+  caption      String?
+  credit       String?
+  width        Int?
+  height       Int?
+  size         Int?
+  mime         String?
+  uploadedById String?
+  uploadedBy   User?    @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model Comment {
+  id         String   @id @default(cuid())
+  articleId  String
+  article    Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  authorName String
+  body       String
+  status     String   @default("PENDING")
+  createdAt  DateTime @default(now())
+
+  @@index([articleId, status])
+  @@index([status])
+}
+
+model ViewEvent {
+  id        String   @id @default(cuid())
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  sessionId String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([articleId, createdAt])
+}
+
+model ShareEvent {
+  id        String   @id @default(cuid())
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  channel   String
+  createdAt DateTime @default(now())
+
+  @@index([articleId])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  type      String
+  title     String
+  body      String?
+  url       String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([readAt])
+}
+
+model Source {
+  id                  String   @id @default(cuid())
+  name                String
+  type                String   @default("RSS")
+  url                 String
+  active              Boolean  @default(true)
+  authorized          Boolean  @default(false)
+  pollIntervalMinutes Int      @default(15)
+  defaultCategorySlug String?
+  lastFetchedAt       DateTime?
+  lastStatus          String?
+  lastError           String?
+  consecutiveFailures Int      @default(0)
+  etag                String?
+  lastModified        String?
+  items               ImportedItem[]
+
+  @@index([active])
+}
+
+model ImportedItem {
+  id                  String    @id @default(cuid())
+  sourceId            String
+  source              Source    @relation(fields: [sourceId], references: [id])
+  externalId          String
+  title               String
+  url                 String
+  canonicalUrl        String?
+  summary             String?
+  contentText         String?
+  imageUrl            String?
+  sourcePublishedAt   DateTime?
+  fetchedAt           DateTime  @default(now())
+  status              String    @default("PENDING")
+  duplicateOfArticleId String?
+  similarity          Float?
+  draftArticleId      String?
+  draftArticle        Article?  @relation(fields: [draftArticleId], references: [id])
+
+  @@unique([sourceId, externalId])
+  @@index([status])
+  @@index([fetchedAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorEmail String?
+  action     String
+  targetType String?
+  targetId   String?
+  meta       String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action])
+}
+

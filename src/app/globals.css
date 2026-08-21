@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+}
+
+.section-title {
+  @apply mb-3 flex items-center gap-2 border-l-4 border-brand pl-2 text-lg font-extrabold uppercase tracking-wide text-brand-ink;
+}
