@@ -4,6 +4,7 @@ import { ArticleCard } from "@/components/ArticleCard";
 import BreakingTicker from "@/components/BreakingTicker";
 import LiveFeed from "@/components/LiveFeed";
 import Newsletter from "@/components/Newsletter";
+import MarketWatch from "@/components/MarketWatch";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,8 @@ export default async function HomePage() {
         </section>
 
         <aside className="space-y-8">
+          <MarketWatch />
+
           <section>
             <h2 className="section-title">Trending Now</h2>
             <ol className="space-y-3">
@@ -73,7 +76,7 @@ export default async function HomePage() {
               More {s.name} →
             </Link>
           </div>
-          <div className={`grid gap-6 ${s.slug === "videos" ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-2 lg:grid-cols-4"}`}>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {s.items.map((a) => (
               <ArticleCard key={a.id} a={a} />
             ))}
