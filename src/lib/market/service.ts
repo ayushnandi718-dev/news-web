@@ -1,79 +1,68 @@
-import { cacheWrap } from "../cache";
-import { resolveProvider, type MarketSymbolSpec } from "./provider";
-import type { MarketQuote, MarketSnapshot } from "./types";
+import { getAlphaVantageQuotes } from "./alpha-vantage";
+import { getYahooQuotes } from "./yahoo";
+import type { MarketQuote, MarketResponse, MarketSymbol } from "./types";
 
-const globalForMarket = globalThis as unknown as {
-  marketLastGood?: MarketSnapshot;
-};
+const SYMBOLS: MarketSymbol[] = ["NIFTY50", "SENSEX", "BANKNIFTY", "USDINR"];
+const CACHE_TTL_MS = 2 * 60 * 1000;
 
-export const DEFAULT_SYMBOLS: MarketSymbolSpec[] = [
-  { symbol: "^NSEI", name: "NIFTY 50", currency: "INR" },
-  { symbol: "^BSESN", name: "SENSEX", currency: "INR" },
-  { symbol: "^NSEBANK", name: "BANK NIFTY", currency: "INR" },
-  { symbol: "USDINR=X", name: "USD / INR", currency: "INR" },
-];
+let cache: { value: MarketResponse; expiresAt: number } | null = null;
+let inFlight: Promise<MarketResponse> | null = null;
 
-function configuredSymbols(): MarketSymbolSpec[] {
-  const raw = process.env.MARKET_SYMBOLS;
-  if (!raw) return DEFAULT_SYMBOLS;
-  const specs = raw
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter(Boolean)
-    .map((entry) => {
-      const [symbol, name, currency] = entry.split("|").map((s) => s.trim());
-      if (!symbol) return null;
-      return { symbol, name: name || symbol, currency: currency || "INR" } as MarketSymbolSpec;
-    })
-    .filter((s): s is MarketSymbolSpec => !!s);
-  return specs.length ? specs : DEFAULT_SYMBOLS;
+function isIndianMarketOpen(date = new Date()) {
+  const weekday = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "short" }).format(date);
+  if (weekday === "Sat" || weekday === "Sun") return false;
+  const parts = new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
+  const minute = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
+  const total = hour * 60 + minute;
+  return total >= 555 && total <= 930;
 }
 
-/**
- * Normalized market snapshot for the reader homepage.
- * - Fresh data is cached for MARKET_TTL_SECONDS (default 120s).
- * - On provider failure the last good snapshot is returned with stale=true.
- * - Never throws; UI renders honest error/stale states.
- */
-export async function getMarketSnapshot(): Promise<MarketSnapshot> {
-  const ttl = Math.max(30, parseInt(process.env.MARKET_TTL_SECONDS ?? "120", 10) || 120);
-  const key = `market:v1:${Math.floor(Date.now() / (ttl * 1000))}`;
+function mergeQuotes(primary: MarketQuote[], fallback: MarketQuote[]) {
+  const bySymbol = new Map(fallback.map((quote) => [quote.symbol, quote]));
+  for (const quote of primary) bySymbol.set(quote.symbol, quote);
+  return SYMBOLS.flatMap((symbol) => {
+    const quote = bySymbol.get(symbol);
+    return quote ? [quote] : [];
+  });
+}
 
-  try {
-    return await cacheWrap(key, ttl, ["market"], async () => {
-      const provider = resolveProvider();
-      let quotes: MarketQuote[] = [];
-      let error: string | null = null;
-      try {
-        quotes = await provider.fetchQuotes(configuredSymbols());
-        if (!quotes.length) error = "No market data available.";
-      } catch {
-        error = "Unable to refresh market data.";
-      }
+async function load(): Promise<MarketResponse> {
+  const yahoo = await getYahooQuotes(SYMBOLS);
+  const alpha = await getAlphaVantageQuotes(SYMBOLS.filter((symbol) => !yahoo.some((q) => q.symbol === symbol)));
+  const quotes = mergeQuotes(yahoo, alpha);
+  if (!quotes.length) throw new Error("No market data provider returned usable quotes");
 
-      const nowIso = new Date().toISOString();
-      if (quotes.length > 0) {
-        const snapshot: MarketSnapshot = {
-          items: quotes,
-          updatedAt: nowIso,
-          delayed: true,
-          stale: false,
-          error: null,
-        };
-        globalForMarket.marketLastGood = snapshot;
-        return snapshot;
-      }
+  return {
+    quotes,
+    updatedAt: new Date().toISOString(),
+    marketStatus: isIndianMarketOpen() ? "OPEN" : "CLOSED",
+    stale: false,
+    source: yahoo.length ? "Yahoo Finance" : "Alpha Vantage",
+  };
+}
 
-      const lastGood = globalForMarket.marketLastGood;
-      if (lastGood) {
-        return { ...lastGood, stale: true, error };
-      }
-      return { items: [], updatedAt: nowIso, delayed: true, stale: true, error: error ?? "Market data unavailable." };
+export async function getMarketQuotes(): Promise<MarketResponse> {
+  if (cache && cache.expiresAt > Date.now()) return cache.value;
+  if (inFlight) return inFlight;
+
+  inFlight = load()
+    .then((value) => {
+      cache = { value, expiresAt: Date.now() + CACHE_TTL_MS };
+      return value;
+    })
+    .catch((error) => {
+      if (cache) return { ...cache.value, stale: true };
+      throw error;
+    })
+    .finally(() => {
+      inFlight = null;
     });
-  } catch {
-    const lastGood = globalForMarket.marketLastGood;
-    const nowIso = new Date().toISOString();
-    if (lastGood) return { ...lastGood, stale: true, error: "Unable to refresh market data." };
-    return { items: [], updatedAt: nowIso, delayed: true, stale: true, error: "Market data unavailable." };
-  }
+
+  return inFlight;
 }

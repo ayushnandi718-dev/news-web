@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { getBreaking, getCategorySections, getFeatured, getLatest, getRegionSections, getTrending } from "@/lib/feeds";
-import { getMarketSnapshot } from "@/lib/market/service";
 import { ArticleCard } from "@/components/ArticleCard";
 import BreakingTicker from "@/components/BreakingTicker";
 import LiveFeed from "@/components/LiveFeed";
-import MarketWatch from "@/components/market/MarketWatch";
+import MarketWatch from "@/components/MarketWatch";
 import Newsletter from "@/components/Newsletter";
 
 export const dynamic = "force-dynamic";
@@ -28,14 +27,13 @@ function SectionHeading({ title, href, label }: { title: string; href?: string; 
 }
 
 export default async function HomePage() {
-  const [breaking, latest, featured, trending, sections, localSections, market] = await Promise.all([
+  const [breaking, latest, featured, trending, sections, localSections] = await Promise.all([
     getBreaking(),
     getLatest({ limit: 12 }),
     getFeatured(4),
     getTrending({ limit: 6 }),
     getCategorySections(5),
     getRegionSections(LOCAL_REGION_SLUGS, 5),
-    getMarketSnapshot(),
   ]);
 
   const items = latest.items;
@@ -121,7 +119,8 @@ export default async function HomePage() {
 
         {/* Right rail: market + top stories */}
         <div className="space-y-6">
-          <MarketWatch initial={market} />
+          <MarketWatch />
+
           {featured.length > 0 && (
             <section aria-label="Top stories" className="hidden lg:block">
               <SectionHeading title="Top Stories" />

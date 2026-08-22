@@ -1,17 +1,20 @@
-export interface MarketQuote {
-  symbol: string;
+export type MarketSymbol = "NIFTY50" | "SENSEX" | "BANKNIFTY" | "USDINR";
+
+export type MarketQuote = {
+  symbol: MarketSymbol;
   name: string;
   price: number;
   change: number;
   changePercent: number;
   currency: string;
   updatedAt: string;
-}
+  source: "yahoo" | "alpha-vantage";
+};
 
-export interface MarketSnapshot {
-  items: MarketQuote[];
+export type MarketResponse = {
+  quotes: MarketQuote[];
   updatedAt: string;
-  delayed: boolean;
+  marketStatus: "OPEN" | "CLOSED";
   stale: boolean;
-  error: string | null;
-}
+  source: string;
+};
