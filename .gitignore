@@ -1,5 +1,6 @@
 node_modules/
 .next/
+.next-prod/
 out/
 .env
 .env.local
@@ -10,3 +11,8 @@ prisma/dev.db*
 *.tsbuildinfo
 next-env.d.ts
 .env.example
+server.log
+md/
+public/uploads/
+.agents/
+.claude/
