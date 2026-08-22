@@ -5,6 +5,7 @@ import BreakingTicker from "@/components/BreakingTicker";
 import LiveFeed from "@/components/LiveFeed";
 import MarketWatch from "@/components/MarketWatch";
 import Newsletter from "@/components/Newsletter";
+import WeatherCard from "@/components/WeatherCard";
 
 export const dynamic = "force-dynamic";
 
@@ -117,8 +118,9 @@ export default async function HomePage() {
           )}
         </section>
 
-        {/* Right rail: market + top stories */}
+        {/* Right rail: weather + market + top stories */}
         <div className="space-y-6">
+          <WeatherCard />
           <MarketWatch />
 
           {featured.length > 0 && (
@@ -146,7 +148,7 @@ export default async function HomePage() {
           <ol className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
             {trending.items.map((a, i) => (
               <li key={a.id} className="flex gap-3 px-4 py-2.5 transition hover:bg-slate-50">
-                <span className="w-6 shrink-0 text-lg font-black leading-none tabular-nums text-slate-200">
+                <span className="w-6 shrink-0 text-lg font-black leading-none tabular-nims text-slate-200">
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 <div className="min-w-0">
