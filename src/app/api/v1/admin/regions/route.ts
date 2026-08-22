@@ -1,9 +1,10 @@
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { regionSchema } from "@/lib/validation";
-import { requirePerm, canManageRegions } from "@/lib/auth";
+import { requirePerm } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { handleError, ok } from "@/lib/api";
+import { slugify } from "@/lib/text";
 import { invalidateTags } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
@@ -46,15 +47,15 @@ export async function POST(req: NextRequest) {
     const session = await requirePerm("region.create");
     const body = regionSchema.parse(await req.json());
 
+    const slug = body.slug || slugify(body.name) || `region-${Date.now()}`;
+
     // Check for duplicate slug
     const existing = await db.region.findUnique({
-      where: { slug: body.slug || body.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") }
+      where: { slug }
     });
     if (existing) {
       return handleError(new Error("Region with this slug already exists"));
     }
-
-    const slug = body.slug || body.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
     const region = await db.region.create({
       data: {

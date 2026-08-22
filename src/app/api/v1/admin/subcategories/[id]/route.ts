@@ -3,19 +3,20 @@ import { db } from "@/lib/db";
 import { subcategorySchema } from "@/lib/validation";
 import { requirePerm } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { handleError, ok } from "@/lib/api";
+import { handleError, ok, apiError } from "@/lib/api";
 import { invalidateTags } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     await requirePerm("dashboard.view");
     const subcategory = await db.subcategory.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         category: {
           select: { id: true, name: true, slug: true }
@@ -27,7 +28,7 @@ export async function GET(
     });
 
     if (!subcategory) {
-      return handleError(new Error("Subcategory not found"), 404);
+      return apiError("Subcategory not found", 404);
     }
 
     return ok({ subcategory });
@@ -38,14 +39,15 @@ export async function GET(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await requirePerm("subcategory.edit");
     const body = subcategorySchema.partial().parse(await req.json());
 
     const subcategory = await db.subcategory.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(body.name !== undefined && { name: body.name }),
         ...(body.slug !== undefined && { slug: body.slug }),
@@ -79,14 +81,15 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await requirePerm("subcategory.delete");
 
     // Check if subcategory has articles
     const articleCount = await db.article.count({
-      where: { subcategoryId: params.id }
+      where: { subcategoryId: id }
     });
 
     if (articleCount > 0) {
@@ -94,7 +97,7 @@ export async function DELETE(
     }
 
     const subcategory = await db.subcategory.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
     await audit({

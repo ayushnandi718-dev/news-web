@@ -249,6 +249,41 @@ export async function getFeatured(limit = 4): Promise<SerializedArticle[]> {
   });
 }
 
+export async function getRegionSections(
+  regionSlugs: string[],
+  limit = 4
+): Promise<Array<{ slug: string; name: string; items: SerializedArticle[] }>> {
+  const now = new Date();
+  if (!regionSlugs.length) return [];
+  return cacheWrap(
+    `regionsections:${regionSlugs.join("|")}:${limit}:${Math.floor(now.getTime() / 60_000)}`,
+    CACHE_TTL_SECONDS.home,
+    ["latest"],
+    async () => {
+      const regions = await db.region.findMany({ where: { slug: { in: regionSlugs } } });
+      const out = [];
+      for (const r of regionSlugs) {
+        const region = regions.find((x) => x.slug === r);
+        if (!region) continue;
+        const rows = await db.article.findMany({
+          where: {
+            regionId: region.id,
+            status: { in: ["PUBLISHED", "OLDER"] },
+            publishedAt: { not: null, lte: now },
+          },
+          include: articleInclude,
+          orderBy: { publishedAt: "desc" },
+          take: limit,
+        });
+        if (rows.length > 0) {
+          out.push({ slug: r, name: region.name, items: rows.map((a) => serializeArticle(a, now)) });
+        }
+      }
+      return out;
+    }
+  );
+}
+
 export async function getCategorySections(limit = 4): Promise<
   Array<{ slug: string; name: string; items: SerializedArticle[] }>
 > {

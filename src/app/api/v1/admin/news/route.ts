@@ -4,6 +4,7 @@ import { createArticleSchema } from "@/lib/validation";
 import { requirePerm } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { uniqueSlug } from "@/lib/slug";
+import { slugify } from "@/lib/text";
 import { audit } from "@/lib/audit";
 import { handleError, ok } from "@/lib/api";
 import { publishEvent } from "@/lib/events";
@@ -26,7 +27,12 @@ export async function GET(req: NextRequest) {
     const [rows, total] = await Promise.all([
       db.article.findMany({
         where,
-        include: { category: { select: { slug: true, name: true } }, author: { select: { name: true } } },
+        include: {
+          category: { select: { slug: true, name: true } },
+          subcategory: { select: { slug: true, name: true } },
+          region: { select: { slug: true, name: true } },
+          author: { select: { name: true } },
+        },
         orderBy: { updatedAt: "desc" },
         skip: page * limit,
         take: limit,
@@ -72,10 +78,11 @@ export async function POST(req: NextRequest) {
     const tagNames = Array.from(new Set(body.tags.map((t) => t.trim()).filter(Boolean)));
     const tagConnects = [];
     for (const name of tagNames) {
+      const tagSlug = slugify(name) || name;
       const t = await db.tag.upsert({
-        where: { slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || name },
+        where: { slug: tagSlug },
         update: {},
-        create: { name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || name },
+        create: { name, slug: tagSlug },
       });
       tagConnects.push({ id: t.id });
     }

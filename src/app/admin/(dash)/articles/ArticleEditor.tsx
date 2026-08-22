@@ -46,7 +46,7 @@ export default function ArticleEditor({ onSaved }: ArticleEditorProps) {
     isFeatured: false,
     editorialPriority: 0,
     geographicPriority: 0,
-    geographicScope: "LOCAL" as GeographicScope,
+    geographicScope: "LOCAL" as any,
     district: "",
     state: "",
     country: "",
@@ -59,8 +59,33 @@ export default function ArticleEditor({ onSaved }: ArticleEditorProps) {
   const [busy, setBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const formRef = useRef(form);
   formRef.current = form;
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function handleUpload(file: File) {
+    setUploading(true);
+    setError("");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("alt", formRef.current.title || file.name);
+      const res = await fetch("/api/v1/admin/media", { method: "POST", body: fd });
+      const json = await res.json();
+      if (!json.ok) {
+        setError(json.error || "Image upload failed");
+        return;
+      }
+      setMedia((m) => [json.data.media, ...m]);
+      update({ featuredImage: json.data.media.url });
+    } catch {
+      setError("Image upload failed — check connection and try again.");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
 
   useEffect(() => {
     // Load categories
@@ -294,10 +319,34 @@ export default function ArticleEditor({ onSaved }: ArticleEditorProps) {
           placeholder="Featured image URL"
           className="min-w-48 flex-1 rounded border border-slate-300 px-2 py-1.5"
         />
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleUpload(f);
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          className="rounded bg-slate-800 px-2 py-1.5 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
+        >
+          {uploading ? "Uploading…" : "⬆ Upload image"}
+        </button>
         <button type="button" onClick={() => setShowMedia((v) => !v)} className="rounded border border-slate-300 px-2 py-1.5 text-xs font-semibold hover:border-brand hover:text-brand">
           Pick from library
         </button>
       </div>
+      {form.featuredImage && (
+        <div className="mt-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={form.featuredImage} alt="Featured preview" className="h-28 w-full max-w-xs rounded object-cover" />
+        </div>
+      )}
       {showMedia && (
         <div className="mt-2 grid max-h-40 grid-cols-4 gap-2 overflow-y-auto rounded border border-slate-200 p-2 sm:grid-cols-6">
           {(media.length ? media : []).map((m) => (
@@ -379,7 +428,7 @@ export default function ArticleEditor({ onSaved }: ArticleEditorProps) {
           <label className="text-xs text-slate-500">Geographic Scope</label>
           <select
             value={form.geographicScope}
-            onChange={(e) => update({ geographicScope: e.target.value as GeographicScope })}
+            onChange={(e) => update({ geographicScope: e.target.value as any })}
             className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
           >
             <option value="LOCAL">Local</option>

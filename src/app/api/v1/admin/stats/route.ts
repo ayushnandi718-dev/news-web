@@ -10,7 +10,7 @@ export async function GET() {
     const now = new Date();
     const dayAgo = new Date(now.getTime() - 86400_000);
 
-    const [published, inReview, drafts, pendingImports, duplicateCandidates, failedImports, activeBreaking, expiredBreaking, older, archived] =
+    const [published, inReview, drafts, pendingImports, duplicateCandidates, failedImports, activeBreaking, expiredBreaking, older, archived, scheduled] =
       await Promise.all([
         db.article.count({ where: { status: "PUBLISHED" } }),
         db.article.count({ where: { status: "IN_REVIEW" } }),
@@ -22,7 +22,14 @@ export async function GET() {
         db.article.count({ where: { isBreaking: true, breakingUntil: { lte: now } } }),
         db.article.count({ where: { status: "OLDER" } }),
         db.article.count({ where: { status: "ARCHIVED" } }),
+        db.article.count({ where: { status: "SCHEDULED" } }),
       ]);
+
+    const nextScheduled = await db.article.findFirst({
+      where: { status: "SCHEDULED", scheduledAt: { gte: now } },
+      orderBy: { scheduledAt: "asc" },
+      select: { scheduledAt: true },
+    });
 
     const categories = await db.category.findMany({
       select: { id: true, slug: true, name: true },
@@ -70,8 +77,14 @@ export async function GET() {
         expiredBreaking,
         older,
         archived,
+        scheduled,
       },
-      today: { publishedToday, importedToday, freshWindow: dayAgo.toISOString() },
+      today: {
+        publishedToday,
+        importedToday,
+        freshWindow: dayAgo.toISOString(),
+        nextScheduledAt: nextScheduled?.scheduledAt?.toISOString() ?? null,
+      },
       staleCategories,
       server_time: now.toISOString(),
     });

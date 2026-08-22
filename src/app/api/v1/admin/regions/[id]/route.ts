@@ -1,21 +1,22 @@
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { regionSchema } from "@/lib/validation";
-import { requirePerm, canManageRegions } from "@/lib/auth";
+import { requirePerm } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { handleError, ok } from "@/lib/api";
+import { handleError, ok, apiError } from "@/lib/api";
 import { invalidateTags } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     await requirePerm("dashboard.view");
     const region = await db.region.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         parent: {
           select: { id: true, name: true, slug: true }
@@ -30,7 +31,7 @@ export async function GET(
     });
 
     if (!region) {
-      return handleError(new Error("Region not found"), 404);
+      return apiError("Region not found", 404);
     }
 
     return ok({ region });
@@ -41,14 +42,15 @@ export async function GET(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await requirePerm("region.edit");
     const body = regionSchema.partial().parse(await req.json());
 
     const region = await db.region.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(body.name !== undefined && { name: body.name }),
         ...(body.slug !== undefined && { slug: body.slug }),
@@ -85,14 +87,15 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await requirePerm("region.delete");
 
     // Check if region has articles
     const articleCount = await db.article.count({
-      where: { regionId: params.id }
+      where: { regionId: id }
     });
 
     if (articleCount > 0) {
@@ -101,7 +104,7 @@ export async function DELETE(
 
     // Check if region has children
     const childCount = await db.region.count({
-      where: { parentId: params.id }
+      where: { parentId: id }
     });
 
     if (childCount > 0) {
@@ -109,7 +112,7 @@ export async function DELETE(
     }
 
     const region = await db.region.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
     await audit({

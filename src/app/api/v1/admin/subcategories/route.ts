@@ -4,6 +4,7 @@ import { subcategorySchema } from "@/lib/validation";
 import { requirePerm } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { handleError, ok } from "@/lib/api";
+import { slugify } from "@/lib/text";
 import { invalidateTags } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check for duplicate slug
-    const slug = body.slug || body.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const slug = body.slug || slugify(body.name) || `subcat-${Date.now()}`;
     const existing = await db.subcategory.findUnique({
       where: { slug }
     });
