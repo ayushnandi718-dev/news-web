@@ -8,7 +8,7 @@ export type MarketQuote = {
   changePercent: number;
   currency: string;
   updatedAt: string;
-  source: "yahoo" | "alpha-vantage";
+  source: "yahoo" | "alpha-vantage" | "twelvedata";
 };
 
 export type MarketResponse = {

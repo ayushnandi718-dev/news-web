@@ -1,4 +1,5 @@
 import { getAlphaVantageQuotes } from "./alpha-vantage";
+import { getTwelveDataQuotes } from "./twelvedata";
 import { getYahooQuotes } from "./yahoo";
 import type { MarketQuote, MarketResponse, MarketSymbol } from "./types";
 
@@ -32,10 +33,27 @@ function mergeQuotes(primary: MarketQuote[], fallback: MarketQuote[]) {
   });
 }
 
+const PROVIDER_LABELS: Record<MarketQuote["source"], string> = {
+  yahoo: "Yahoo Finance",
+  "alpha-vantage": "Alpha Vantage",
+  twelvedata: "Twelve Data",
+};
+
+function sourceLabel(quotes: MarketQuote[]): string {
+  const sources = [...new Set(quotes.map((q) => q.source))];
+  return sources.map((s) => PROVIDER_LABELS[s]).join(" + ") || "None";
+}
+
 async function load(): Promise<MarketResponse> {
   const yahoo = await getYahooQuotes(SYMBOLS);
-  const alpha = await getAlphaVantageQuotes(SYMBOLS.filter((symbol) => !yahoo.some((q) => q.symbol === symbol)));
-  const quotes = mergeQuotes(yahoo, alpha);
+  const missingAfterYahoo = SYMBOLS.filter((symbol) => !yahoo.some((q) => q.symbol === symbol));
+  const alpha = await getAlphaVantageQuotes(missingAfterYahoo);
+  const missingAfterAlpha = missingAfterYahoo.filter(
+    (symbol) => !alpha.some((q) => q.symbol === symbol)
+  );
+  const twelve = await getTwelveDataQuotes(missingAfterAlpha);
+
+  const quotes = mergeQuotes(mergeQuotes(yahoo, alpha), twelve);
   if (!quotes.length) throw new Error("No market data provider returned usable quotes");
 
   return {
@@ -43,7 +61,7 @@ async function load(): Promise<MarketResponse> {
     updatedAt: new Date().toISOString(),
     marketStatus: isIndianMarketOpen() ? "OPEN" : "CLOSED",
     stale: false,
-    source: yahoo.length ? "Yahoo Finance" : "Alpha Vantage",
+    source: sourceLabel(quotes),
   };
 }
 
