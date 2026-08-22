@@ -62,11 +62,11 @@ export const ARTICLE_STATUSES = [
 ] as const;
 export type ArticleStatusValue = (typeof ARTICLE_STATUSES)[number];
 
-export const PUBLIC_VISIBLE_STATUSES: ArticleStatusValue[] = ["PUBLISHED", "OLDER", "ARCHIVED"];
+// Reader-facing statuses. ARCHIVED is intentionally excluded:
+// archived stories stay in admin dashboards but leave every public surface.
+export const PUBLIC_VISIBLE_STATUSES: ArticleStatusValue[] = ["PUBLISHED", "OLDER"];
 
 export const LATEST_WINDOW_HOURS = 72;
-export const OLDER_AFTER_HOURS = 48;
-export const ARCHIVE_AFTER_DAYS = 30;
 
 export const TRENDING_WINDOW_HOURS = 72;
 export const TRENDING_WEIGHTS = { views: 12, shares: 8, comments: 6, recency: 40 };
@@ -99,6 +99,7 @@ export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 50;
 
 export const NEWSROOM_TZ = process.env.NEWSROOM_TZ || "Asia/Kolkata";
+export const ARCHIVE_ROLLUP_TZ = NEWSROOM_TZ;
 
 export const INGEST_DEFAULT_INTERVAL_MINUTES = 15;
 export const INGEST_MAX_FAILURES_BEFORE_DISABLE = 10;

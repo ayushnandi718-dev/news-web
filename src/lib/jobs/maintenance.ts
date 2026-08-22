@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { ARCHIVE_AFTER_DAYS, OLDER_AFTER_HOURS } from "../config";
+import { ARCHIVE_ROLLUP_TZ } from "../config";
 import { publishEvent } from "../events";
 import { invalidateTags } from "../cache";
 
@@ -44,23 +44,52 @@ export async function publishScheduled(): Promise<number> {
   return due.length;
 }
 
+function timeZoneOffsetMs(utcMs: number, timeZone: string): number {
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  const parts = dtf.formatToParts(new Date(utcMs));
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? "0");
+  const asUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour") % 24, get("minute"), get("second"));
+  return asUtc - utcMs;
+}
+
+export function zonedDayStartUtc(now: Date, timeZone: string = ARCHIVE_ROLLUP_TZ): Date {
+  const ymd = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  const [y, m, d] = ymd.split("-").map(Number);
+  const guess = Date.UTC(y, m - 1, d);
+  return new Date(guess - timeZoneOffsetMs(guess, timeZone));
+}
+
+/**
+ * Midnight rollup (NEWSROOM_TZ): every article published before today's
+ * 00:00 leaves the reader surface and becomes ARCHIVED. Dashboards keep
+ * listing it under the "Archived" label.
+ */
 export async function transitionLifecycle(): Promise<{ toOlder: number; toArchived: number }> {
   const now = new Date();
-  const olderCutoff = new Date(now.getTime() - OLDER_AFTER_HOURS * 3600_000);
-  const archiveCutoff = new Date(now.getTime() - ARCHIVE_AFTER_DAYS * 86400_000);
-
-  const toOlder = await db.article.updateMany({
-    where: { status: "PUBLISHED", publishedAt: { not: null, lt: olderCutoff }, isBreaking: false },
-    data: { status: "OLDER" },
-  });
+  const todayStart = zonedDayStartUtc(now);
 
   const toArchived = await db.article.updateMany({
-    where: { status: "OLDER", publishedAt: { not: null, lt: archiveCutoff } },
+    where: { status: { in: ["PUBLISHED", "OLDER"] }, publishedAt: { not: null, lt: todayStart } },
     data: { status: "ARCHIVED" },
   });
 
-  if (toOlder.count > 0 || toArchived.count > 0) {
-    invalidateTags(["latest", "home", "trending", "admin_stats"]);
+  if (toArchived.count > 0) {
+    invalidateTags(["latest", "home", "trending", "breaking", "admin_stats"]);
+    publishEvent({ type: "article.archived" });
   }
-  return { toOlder: toOlder.count, toArchived: toArchived.count };
+  return { toOlder: 0, toArchived: toArchived.count };
 }

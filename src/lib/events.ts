@@ -3,6 +3,7 @@ import { EventEmitter } from "events";
 export type NewsEvent =
   | { type: "article.published"; id: string; slug: string; title: string; categoryId: string; publishedAt: string; isBreaking: boolean }
   | { type: "article.updated"; id: string; slug: string; title: string }
+  | { type: "article.archived" }
   | { type: "breaking.updated" }
   | { type: "heartbeat" };
 

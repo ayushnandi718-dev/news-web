@@ -1,12 +1,13 @@
 import type { MetadataRoute } from "next";
 import { db } from "@/lib/db";
+import { PUBLIC_VISIBLE_STATUSES } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = process.env.SITE_URL ?? "http://localhost:3000";
   const articles = await db.article.findMany({
-    where: { status: { in: ["PUBLISHED", "OLDER", "ARCHIVED"] }, publishedAt: { not: null } },
+    where: { status: { in: PUBLIC_VISIBLE_STATUSES }, publishedAt: { not: null } },
     orderBy: { publishedAt: "desc" },
     take: 5000,
     select: { slug: true, publishedAt: true, updatedAt: true },
