@@ -1,5 +1,6 @@
 import { AuthError } from "./auth";
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 
 export function ok<T>(data: T, init?: ResponseInit): NextResponse {
   return NextResponse.json({ ok: true, data }, init);
@@ -17,6 +18,7 @@ export function handleError(err: unknown): NextResponse {
       .join("; ");
     return apiError(`Validation failed: ${issues}`, 422);
   }
+  Sentry.captureException(err);
   console.error("[api] unhandled error:", err);
   return apiError("Internal server error", 500);
 }

@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { createArticleSchema } from "@/lib/validation";
 import { requirePerm } from "@/lib/auth";
@@ -6,7 +7,7 @@ import { can } from "@/lib/permissions";
 import { uniqueSlug } from "@/lib/slug";
 import { slugify } from "@/lib/text";
 import { audit } from "@/lib/audit";
-import { handleError, ok } from "@/lib/api";
+import { handleError, ok, apiError } from "@/lib/api";
 import { publishEvent } from "@/lib/events";
 import { invalidateTags } from "@/lib/cache";
 
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
       ...(status ? { status } : {}),
       ...(q ? { OR: [{ title: { contains: q } }, { excerpt: { contains: q } }] } : {}),
     };
-    const [rows, total] = await Promise.all([
+    const [rows, total, statusCounts] = await Promise.all([
       db.article.findMany({
         where,
         include: {
@@ -38,6 +39,13 @@ export async function GET(req: NextRequest) {
         take: limit,
       }),
       db.article.count({ where }),
+      db.article.groupBy({
+        by: ["status"],
+        _count: { _all: true },
+        ...(q
+          ? { where: { OR: [{ title: { contains: q } }, { excerpt: { contains: q } }] } }
+          : {}),
+      }),
     ]);
     return ok({
       items: rows.map((a) => ({
@@ -46,6 +54,7 @@ export async function GET(req: NextRequest) {
         authorName: a.author?.name ?? null,
       })),
       total,
+      counts: Object.fromEntries(statusCounts.map((c) => [c.status, c._count._all])),
       page,
       limit,
     });
@@ -66,9 +75,36 @@ export async function POST(req: NextRequest) {
     if (body.scheduledAt && canPublish) {
       effectiveStatus = "SCHEDULED";
     }
+
+    // Quality gate: check required fields before direct publish
+    // Admin roles (OWNER, EDITOR_IN_CHIEF) bypass the quality gate entirely.
+    const isAdminRole = session.role === "OWNER" || session.role === "EDITOR_IN_CHIEF";
+    if (effectiveStatus === "PUBLISHED" && canPublish && !isAdminRole) {
+      const { editorialQualityCheck } = await import("@/lib/editorial-check");
+      const qualityIssues = editorialQualityCheck({
+        title: body.title,
+        slug: body.slug || undefined,
+        excerpt: body.excerpt,
+        content: body.content,
+        featuredImage: body.featuredImage ?? undefined,
+        categoryId: body.categoryId,
+        authorId: session.id,
+      });
+      if (qualityIssues.length > 0) {
+        const errors = qualityIssues.filter((i) => i.severity === "error");
+        if (errors.length > 0) {
+          return NextResponse.json(
+            { ok: false, error: "Cannot publish — fix the issues below", issues: qualityIssues, errorCount: errors.length },
+            { status: 422 }
+          );
+        }
+      }
+    }
     const category = await db.category.findUnique({ where: { id: body.categoryId } });
     if (!category) return handleError(new Error("Category not found"));
-    const slug = body.slug ? body.slug : await uniqueSlug(body.title);
+    const slugRaw = body.slug ? body.slug : "";
+    const slugValid = slugRaw && /^[\p{L}\p{M}\p{N}-]+$/u.test(slugRaw) && slugRaw.length >= 3;
+    const slug = slugValid ? slugRaw : await uniqueSlug(body.title);
     const now = new Date();
     const breakingUntil =
       body.isBreaking && body.breakingMinutes

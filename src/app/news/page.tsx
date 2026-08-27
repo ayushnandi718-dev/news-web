@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getLatest } from "@/lib/feeds";
 import LiveFeed from "@/components/LiveFeed";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 15;
 
 export const metadata: Metadata = {
   title: "Latest News",

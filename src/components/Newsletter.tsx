@@ -4,36 +4,69 @@ import { useState } from "react";
 
 export default function Newsletter() {
   const [email, setEmail] = useState("");
-  const [state, setState] = useState<"idle" | "done" | "error">("idle");
+  const [hp, setHp] = useState("");
+  const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
+  const [msg, setMsg] = useState("");
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    if (hp) return; // bot
+    setState("busy");
+    setMsg("");
+    try {
+      const res = await fetch("/api/v1/newsletter", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, hp }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setState("done");
+        setMsg(
+          json.data.pending
+            ? "নিশ্চিতকরণ ইমেল পাঠানো হয়েছে — ইনবক্স দেখুন।"
+            : "সাবস্ক্রিপশন হয়েছে — প্রতিদিন সকালে ব্রিফ পাবেন।"
+        );
+      } else {
+        setState("error");
+        setMsg(json.error || "সাবস্ক্রাইব করা যায়নি");
+      }
+    } catch {
       setState("error");
-      return;
+      setMsg("নেটওয়ার্ক সমস্যা");
     }
-    setState("done");
   }
 
   return (
-    <section className="mt-12 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <section className="mt-10 border border-slate-200/80 bg-white">
       <div className="grid md:grid-cols-[1fr_auto] md:items-center">
         <div className="px-5 py-5 sm:px-7">
-          <h2 className="text-lg font-black tracking-tight text-brand-ink">
-            The Morning Brief
-            <span className="ml-2 rounded bg-brand px-1.5 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wider text-white">Free</span>
+          <h2 className="text-lg font-bold tracking-tight text-ink">
+            সকালের সংক্ষিপ্ত সংবাদ
+            <span className="ml-2 bg-brand px-1.5 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wider text-white">
+              ফ্রি
+            </span>
           </h2>
-          <p className="mt-1 text-sm text-slate-600">Top stories in your inbox every morning. No spam, unsubscribe anytime.</p>
+          <p className="mt-1 text-sm text-slate-600">
+            প্রতিদিন সকালে আপনার ইনবক্সে আলিপুরদুয়ার ও ডুয়ার্সের সেরা খবর। কোনও স্প্যাম নয়, যখন চান আনসাবস্ক্রাইব করুন।
+          </p>
         </div>
-        <div className="border-t border-slate-100 px-5 py-4 md:border-l md:border-t-0 md:py-0 sm:px-7 md:min-w-[380px]">
+        <div className="border-t border-slate-100 px-5 py-4 sm:px-7 md:min-w-[380px] md:border-l md:border-t-0 md:py-0">
           {state === "done" ? (
-            <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
-              Subscribed — check your inbox to confirm.
-            </p>
+            <p className="bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">{msg}</p>
           ) : (
             <form onSubmit={submit} className="flex gap-2">
+              <input
+                type="text"
+                value={hp}
+                onChange={(e) => setHp(e.target.value)}
+                className="hidden"
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+              />
               <label htmlFor="newsletter-email" className="sr-only">
-                Email address
+                ইমেল ঠিকানা
               </label>
               <input
                 id="newsletter-email"
@@ -41,19 +74,22 @@ export default function Newsletter() {
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
-                  setState("idle");
+                  if (state === "error") setState("idle");
                 }}
                 placeholder="you@example.com"
-                className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand"
+                className="min-w-0 flex-1 border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand"
               />
-              <button className="shrink-0 rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white transition hover:bg-brand-dark">
-                Subscribe
+              <button
+                disabled={state === "busy"}
+                className="shrink-0 bg-brand px-4 py-2 text-sm font-bold text-white transition hover:bg-brand-dark disabled:opacity-50"
+              >
+                {state === "busy" ? "পাঠানো হচ্ছে…" : "সাবস্ক্রাইব"}
               </button>
             </form>
           )}
           {state === "error" && (
-            <p className="mt-1.5 text-xs text-red-600" role="alert">
-              Please enter a valid email address.
+            <p className="mt-1.5 text-xs text-brand" role="alert">
+              {msg}
             </p>
           )}
         </div>

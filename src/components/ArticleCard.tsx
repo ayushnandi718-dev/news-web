@@ -26,16 +26,67 @@ export function ArticleCard({ a, variant = "default" }: { a: ArticleDTO; variant
   }
 
   const isHero = variant === "hero";
+
+  if (!isHero) {
+    // Feed card: text left, compact thumbnail right — clean on 320–430px.
+    return (
+      <article className="flex gap-3 border-b border-slate-100 py-3.5 last:border-0">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            {a.isBreaking && (
+              <span className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-bold uppercase text-white">
+                Breaking
+              </span>
+            )}
+            {a.category && (
+              <Link href={`/category/${a.category.slug}`} className="font-semibold uppercase tracking-wide text-brand hover:underline">
+                {a.category.name}
+              </Link>
+            )}
+            <FreshnessBadge publishedAt={a.publishedAt} categorySlug={a.category?.slug} />
+          </div>
+          <h3 className="mt-1 line-clamp-3 text-[16px] font-bold leading-snug text-slate-900">
+            <Link href={a.url} className="hover:text-brand">
+              {a.title}
+            </Link>
+          </h3>
+          {a.excerpt && <p className="mt-1 hidden line-clamp-2 text-[13px] leading-relaxed text-slate-600 sm:block">{a.excerpt}</p>}
+          <div className="mt-1 text-xs text-slate-500">
+            <TimeAgo publishedAt={a.publishedAt} showClock />
+            {a.authorName && <span> · {a.authorName}</span>}
+          </div>
+        </div>
+        {a.image && (
+          <Link
+            href={a.url}
+            tabIndex={-1}
+            aria-hidden="true"
+            className="relative block h-[86px] w-[112px] shrink-0 overflow-hidden rounded-lg bg-slate-100"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={a.image}
+              alt=""
+              loading="lazy"
+              sizes="112px"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          </Link>
+        )}
+      </article>
+    );
+  }
+
   return (
-    <article className={`group ${isHero ? "" : "border-b border-slate-100 pb-4 last:border-0"}`}>
+    <article>
       {a.image && (
         <Link href={a.url} className="block overflow-hidden rounded-lg bg-slate-100">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={a.image}
             alt=""
-            className={`w-full object-cover transition group-hover:scale-[1.02] ${isHero ? "h-64 md:h-80" : "h-44"}`}
-            loading="lazy"
+            className="aspect-[16/9] w-full object-cover transition group-hover:scale-[1.02]"
+            loading="eager"
           />
         </Link>
       )}
@@ -52,7 +103,7 @@ export function ArticleCard({ a, variant = "default" }: { a: ArticleDTO; variant
         )}
         <FreshnessBadge publishedAt={a.publishedAt} categorySlug={a.category?.slug} />
       </div>
-      <h3 className={`${isHero ? "text-2xl md:text-3xl" : "text-lg"} font-bold leading-tight text-slate-900`}>
+      <h3 className="text-xl font-bold leading-tight text-slate-900 md:text-3xl">
         <Link href={a.url} className="hover:text-brand">
           {a.title}
         </Link>

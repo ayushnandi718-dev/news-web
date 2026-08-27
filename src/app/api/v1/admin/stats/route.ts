@@ -10,7 +10,7 @@ export async function GET() {
     const now = new Date();
     const dayAgo = new Date(now.getTime() - 86400_000);
 
-    const [published, inReview, drafts, pendingImports, duplicateCandidates, failedImports, activeBreaking, expiredBreaking, older, archived, scheduled] =
+    const [published, inReview, drafts, pendingImports, duplicateCandidates, failedImports, activeBreaking, expiredBreaking, older, archived, scheduled, nextScheduled, categories, latestByCategory] =
       await Promise.all([
         db.article.count({ where: { status: "PUBLISHED" } }),
         db.article.count({ where: { status: "IN_REVIEW" } }),
@@ -23,36 +23,37 @@ export async function GET() {
         db.article.count({ where: { status: "OLDER" } }),
         db.article.count({ where: { status: "ARCHIVED" } }),
         db.article.count({ where: { status: "SCHEDULED" } }),
+        db.article.findFirst({
+          where: { status: "SCHEDULED", scheduledAt: { gte: now } },
+          orderBy: { scheduledAt: "asc" },
+          select: { scheduledAt: true },
+        }),
+        db.category.findMany({
+          select: { id: true, slug: true, name: true },
+          orderBy: { name: "asc" },
+        }),
+        // one grouped query instead of a findFirst per category (N+1)
+        db.article.groupBy({
+          by: ["categoryId"],
+          _max: { publishedAt: true },
+          where: { status: { in: ["PUBLISHED", "OLDER"] }, publishedAt: { not: null } },
+        }),
       ]);
 
-    const nextScheduled = await db.article.findFirst({
-      where: { status: "SCHEDULED", scheduledAt: { gte: now } },
-      orderBy: { scheduledAt: "asc" },
-      select: { scheduledAt: true },
-    });
-
-    const categories = await db.category.findMany({
-      select: { id: true, slug: true, name: true },
-      orderBy: { name: "asc" },
-    });
-
+    const lastAtByCat = new Map(latestByCategory.map((r) => [r.categoryId, r._max.publishedAt]));
     const staleCategories: Array<{ slug: string; name: string; hoursSinceLast: number; lastAt: string | null }> = [];
     for (const c of categories) {
-      const last = await db.article.findFirst({
-        where: { categoryId: c.id, status: { in: ["PUBLISHED", "OLDER"] }, publishedAt: { not: null } },
-        orderBy: { publishedAt: "desc" },
-        select: { publishedAt: true },
-      });
-      if (!last?.publishedAt) {
+      const last = lastAtByCat.get(c.id);
+      if (!last) {
         staleCategories.push({ slug: c.slug, name: c.name, hoursSinceLast: -1, lastAt: null });
       } else {
-        const hrs = (now.getTime() - last.publishedAt.getTime()) / 3600_000;
+        const hrs = (now.getTime() - last.getTime()) / 3600_000;
         if (hrs >= 6) {
           staleCategories.push({
             slug: c.slug,
             name: c.name,
             hoursSinceLast: Math.floor(hrs),
-            lastAt: last.publishedAt.toISOString(),
+            lastAt: last.toISOString(),
           });
         }
       }

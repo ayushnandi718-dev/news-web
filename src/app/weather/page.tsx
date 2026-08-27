@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { DIVISION_ORDER, WB_DISTRICTS, getAllDistrictsWeather, iconFor } from "@/lib/weather";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 600;
 
 export const metadata = {
   title: "West Bengal Weather — All Districts | NewsWeb",

@@ -1,14 +1,15 @@
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
+import { decodeSlug } from "@/lib/text";
 import { handleError, ok } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   try {
-    const { slug } = await ctx.params;
+    const { slug: rawSlug } = await ctx.params;
     const article = await db.article.findUnique({
-      where: { slug },
+      where: { slug: decodeSlug(rawSlug) },
       select: { id: true, commentsEnabled: true },
     });
     if (!article) return handleError(new Error("Article not found"));

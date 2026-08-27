@@ -1,13 +1,15 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import AdminShell from "@/components/admin/shell";
 
 export default async function AdminDashLayout({ children }: { children: React.ReactNode }) {
-  const session = await getSession();
+  const session = await getCurrentUser();
   if (!session) redirect("/admin/login");
 
   return (
-    <AdminShell user={{ name: session.name, email: session.email, role: session.role }}>
+    <AdminShell
+      user={{ name: session.name, email: session.email, role: session.role, permissions: session.permissions }}
+    >
       {children}
     </AdminShell>
   );

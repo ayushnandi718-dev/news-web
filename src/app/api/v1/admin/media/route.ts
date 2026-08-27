@@ -33,7 +33,12 @@ export async function POST(req: NextRequest) {
     if (file.size > MAX_UPLOAD_BYTES) return apiError("File too large (max 8 MB)", 413);
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const saved = await saveUpload(buffer, file.type);
+    let saved: { url: string; filePath: string };
+    try {
+      saved = await saveUpload(buffer, file.type);
+    } catch (e) {
+      return apiError(e instanceof Error ? e.message : "File processing failed — not a valid image", 415);
+    }
     const media = await db.media.create({
       data: {
         url: saved.url,

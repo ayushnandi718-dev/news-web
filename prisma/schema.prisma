@@ -8,32 +8,66 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  passwordHash String
-  name         String
-  role         String    @default("REPORTER")
-  bio          String?
-  avatarUrl    String?
-  active       Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  articles     Article[]
+  id             String    @id @default(cuid())
+  email          String    @unique
+  passwordHash   String
+  name           String
+  role           String    @default("REPORTER")
+  bio            String?
+  avatarUrl      String?
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  articles       Article[]
   editedArticles Article[] @relation("ArticleEditor")
-  media        Media[]
+  media          Media[]
+  sessions       AdminSession[]
+  passwordResets PasswordResetToken[] @relation("PasswordReset")
+  totpSecret    String?
+  totpEnabled   Boolean  @default(false)
+}
+
+model AdminSession {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  userAgent  String?
+  ipAddress  String?
+  expiresAt  DateTime
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([revokedAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation("PasswordReset", fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model Category {
-  id                 String       @id @default(cuid())
-  slug               String       @unique
+  id                 String        @id @default(cuid())
+  slug               String        @unique
   name               String
   description        String?
-  priority           Int          @default(0)
+  priority           Int           @default(0)
   freshnessOverrides Json?
-  type               String       @default("STANDARD")
+  type               String        @default("STANDARD")
   parentId           String?
-  parent             Category?    @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children           Category[]   @relation("CategoryHierarchy")
   articles           Article[]
+  parent             Category?     @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children           Category[]    @relation("CategoryHierarchy")
   subcategories      Subcategory[]
 
   @@index([slug])
@@ -48,26 +82,26 @@ model Subcategory {
   description String?
   priority    Int       @default(0)
   categoryId  String
-  category    Category  @relation(fields: [categoryId], references: [id])
   articles    Article[]
+  category    Category  @relation(fields: [categoryId], references: [id])
 
   @@index([slug])
   @@index([categoryId])
 }
 
 model Region {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  name        String
-  type        String
-  parentId    String?
-  parent      Region?  @relation("RegionHierarchy", fields: [parentId], references: [id])
-  children    Region[] @relation("RegionHierarchy")
-  district    String?
-  state       String?
-  country     String?
-  priority    Int      @default(0)
-  articles    Article[]
+  id       String    @id @default(cuid())
+  slug     String    @unique
+  name     String
+  type     String
+  parentId String?
+  district String?
+  state    String?
+  country  String?
+  priority Int       @default(0)
+  articles Article[]
+  parent   Region?   @relation("RegionHierarchy", fields: [parentId], references: [id])
+  children Region[]  @relation("RegionHierarchy")
 
   @@index([slug])
   @@index([parentId])
@@ -78,60 +112,59 @@ model Region {
 }
 
 model Article {
-  id                  String   @id @default(cuid())
-  title               String
-  slug                String   @unique
-  excerpt             String
-  content             String
-  featuredImage       String?
-  categoryId          String
-  category            Category @relation(fields: [categoryId], references: [id])
-  subcategoryId       String?
-  subcategory         Subcategory? @relation(fields: [subcategoryId], references: [id])
-  regionId            String?
-  region              Region?  @relation(fields: [regionId], references: [id])
-  authorId            String?
-  author              User?    @relation(fields: [authorId], references: [id])
-  editorId            String?
-  editor              User?    @relation("ArticleEditor", fields: [editorId], references: [id])
-  status              String   @default("DRAFT")
-  publishedAt         DateTime?
-  scheduledAt         DateTime?
-  isBreaking          Boolean  @default(false)
-  breakingUntil       DateTime?
-  breakingPriority    Int      @default(0)
-  isFeatured          Boolean  @default(false)
-  editorialPriority   Int      @default(0)
-  geographicPriority  Int      @default(0)
-  geographicScope     String   @default("LOCAL")
-  district            String?
-  state               String?
-  country             String?
-  views               Int      @default(0)
-  shares              Int      @default(0)
-  commentsCount       Int      @default(0)
-  readingTimeMinutes  Int      @default(0)
-  sourceName          String?
-  sourceUrl           String?
-  canonicalUrl        String?
-  sourceId            String?
-  sourceNotes         String?
-  imageCaption        String?
-  imageCredit         String?
-  seoTitle            String?
-  seoDescription      String?
-  ogImage             String?
-  commentsEnabled     Boolean  @default(true)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-
-  tags           ArticleTag[]
-  importedItems  ImportedItem[]
-  comments       Comment[]
-  viewEvents     ViewEvent[]
-  shareEvents    ShareEvent[]
-  revisions      ArticleRevision[]
-  corrections    Correction[]
+  id                 String            @id @default(cuid())
+  title              String
+  slug               String            @unique
+  excerpt            String
+  content            String
+  featuredImage      String?
+  categoryId         String
+  subcategoryId      String?
+  regionId           String?
+  authorId           String?
+  editorId           String?
+  status             String            @default("DRAFT")
+  publishedAt        DateTime?
+  scheduledAt        DateTime?
+  isBreaking         Boolean           @default(false)
+  breakingUntil      DateTime?
+  breakingPriority   Int               @default(0)
+  isFeatured         Boolean           @default(false)
+  editorialPriority  Int               @default(0)
+  geographicPriority Int               @default(0)
+  geographicScope    String            @default("LOCAL")
+  district           String?
+  state              String?
+  country            String?
+  views              Int               @default(0)
+  shares             Int               @default(0)
+  commentsCount      Int               @default(0)
+  readingTimeMinutes Int               @default(0)
+  sourceName         String?
+  sourceUrl          String?
+  canonicalUrl       String?
+  sourceId           String?
+  sourceNotes        String?
+  imageCaption       String?
+  imageCredit        String?
+  seoTitle           String?
+  seoDescription     String?
+  ogImage            String?
+  commentsEnabled    Boolean           @default(true)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  author             User?             @relation(fields: [authorId], references: [id])
+  category           Category          @relation(fields: [categoryId], references: [id])
+  editor             User?             @relation("ArticleEditor", fields: [editorId], references: [id])
+  region             Region?           @relation(fields: [regionId], references: [id])
+  subcategory        Subcategory?      @relation(fields: [subcategoryId], references: [id])
+  revisions          ArticleRevision[]
+  tags               ArticleTag[]
+  comments           Comment[]
+  corrections        Correction[]
+  importedItems      ImportedItem[]
+  shareEvents        ShareEvent[]
+  viewEvents         ViewEvent[]
 
   @@index([publishedAt])
   @@index([status])
@@ -150,6 +183,8 @@ model Article {
   @@index([country])
   @@index([authorId])
   @@index([editorId])
+  @@index([views])
+  @@index([createdAt])
 }
 
 model Tag {
@@ -184,20 +219,21 @@ model Media {
   size         Int?
   mime         String?
   uploadedById String?
-  uploadedBy   User?    @relation(fields: [uploadedById], references: [id])
   createdAt    DateTime @default(now())
+  uploadedBy   User?    @relation(fields: [uploadedById], references: [id])
 
   @@index([createdAt])
+  @@index([uploadedById])
 }
 
 model Comment {
   id         String   @id @default(cuid())
   articleId  String
-  article    Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
   authorName String
   body       String
   status     String   @default("PENDING")
   createdAt  DateTime @default(now())
+  article    Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
 
   @@index([articleId, status])
   @@index([status])
@@ -206,9 +242,9 @@ model Comment {
 model ViewEvent {
   id        String   @id @default(cuid())
   articleId String
-  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
   sessionId String
   createdAt DateTime @default(now())
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
 
   @@index([createdAt])
   @@index([articleId, createdAt])
@@ -217,9 +253,9 @@ model ViewEvent {
 model ShareEvent {
   id        String   @id @default(cuid())
   articleId String
-  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
   channel   String
   createdAt DateTime @default(now())
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
 
   @@index([articleId])
 }
@@ -237,18 +273,19 @@ model Notification {
 }
 
 model Source {
-  id                  String   @id @default(cuid())
+  id                  String         @id @default(cuid())
   name                String
-  type                String   @default("RSS")
+  type                String         @default("RSS")
   url                 String
-  active              Boolean  @default(true)
-  authorized          Boolean  @default(false)
-  pollIntervalMinutes Int      @default(15)
+  active              Boolean        @default(true)
+  authorized          Boolean        @default(false)
+  autoPublish         Boolean        @default(false)
+  pollIntervalMinutes Int            @default(15)
   defaultCategorySlug String?
   lastFetchedAt       DateTime?
   lastStatus          String?
   lastError           String?
-  consecutiveFailures Int      @default(0)
+  consecutiveFailures Int            @default(0)
   etag                String?
   lastModified        String?
   items               ImportedItem[]
@@ -257,27 +294,117 @@ model Source {
 }
 
 model ImportedItem {
-  id                  String    @id @default(cuid())
-  sourceId            String
-  source              Source    @relation(fields: [sourceId], references: [id])
-  externalId          String
-  title               String
-  url                 String
-  canonicalUrl        String?
-  summary             String?
-  contentText         String?
-  imageUrl            String?
-  sourcePublishedAt   DateTime?
-  fetchedAt           DateTime  @default(now())
-  status              String    @default("PENDING")
+  id                   String    @id @default(cuid())
+  sourceId             String
+  externalId           String
+  title                String
+  url                  String
+  canonicalUrl         String?
+  summary              String?
+  contentText          String?
+  imageUrl             String?
+  sourcePublishedAt    DateTime?
+  fetchedAt            DateTime  @default(now())
+  status               String    @default("PENDING")
   duplicateOfArticleId String?
-  similarity          Float?
-  draftArticleId      String?
-  draftArticle        Article?  @relation(fields: [draftArticleId], references: [id])
+  similarity           Float?
+  draftArticleId       String?
+  draftArticle         Article?  @relation(fields: [draftArticleId], references: [id])
+  source               Source    @relation(fields: [sourceId], references: [id])
 
   @@unique([sourceId, externalId])
   @@index([status])
   @@index([fetchedAt])
+  @@index([draftArticleId])
+  @@index([duplicateOfArticleId])
+}
+
+model Advertisement {
+  id             String    @id @default(cuid())
+  internalName   String
+  slug           String    @unique
+  advertiserName String    @default("")
+  businessName   String?
+  email          String?
+  phone          String?
+  title          String    @default("")
+  description    String    @default("")
+  imageUrl       String?
+  destinationUrl String?
+  type           String    @default("TOP_BANNER")
+  placement      String    @default("HOME_TOP")
+  size           String    @default("MEDIUM")
+  price          Float     @default(0)
+  priority       Int       @default(0)
+  status         String    @default("DRAFT")
+  startDate      DateTime?
+  endDate        DateTime?
+  impressions    Int       @default(0)
+  clicks         Int       @default(0)
+  paymentStatus  String    @default("UNPAID")
+  paymentDate    DateTime?
+  paymentNotes   String?
+  deletedAt      DateTime?
+  requestId      String?
+  request        AdvertisementRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([status, placement])
+  @@index([placement, priority])
+  @@index([paymentStatus])
+  @@index([deletedAt])
+  @@index([startDate, endDate])
+}
+
+model AdvertisementRequest {
+  id                String         @id @default(cuid())
+  name              String
+  businessName      String?
+  email             String
+  phone             String?
+  type              String         @default("TOP_BANNER")
+  message           String
+  bannerUrl         String?
+  needsBannerDesign Boolean        @default(false)
+  status            String         @default("PENDING_REVIEW")
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  advertisements    Advertisement[]
+
+  @@index([status, createdAt])
+}
+
+model PushSubscription {
+  id            String   @id @default(cuid())
+  endpoint      String
+  p256dh        String
+  auth          String
+  userAgent     String?
+  tags          String[]
+  createdAt     DateTime @default(now())
+
+  @@unique([endpoint])
+  @@index([createdAt])
+}
+
+model AdvertisementPricing {
+  id        String   @id @default(cuid())
+  type      String
+  placement String
+  size      String
+  basePrice Float
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([type, placement, size])
+}
+
+model SiteSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }
 
 model AuditLog {
@@ -292,33 +419,92 @@ model AuditLog {
 
   @@index([createdAt])
   @@index([action])
+  @@index([actorId])
 }
 
 model ArticleRevision {
-  id         String   @id @default(cuid())
-  articleId  String
-  article    Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  title      String
-  content    String
-  excerpt    String?
-  reason     String?
-  authorId   String?
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  articleId String
+  title     String
+  content   String
+  excerpt   String?
+  reason    String?
+  authorId  String?
+  createdAt DateTime @default(now())
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
 
   @@index([articleId])
   @@index([createdAt])
 }
 
 model Correction {
-  id         String   @id @default(cuid())
-  articleId  String
-  article    Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  originalText String
+  id            String   @id @default(cuid())
+  articleId     String
+  originalText  String
   correctedText String
-  reason     String
-  authorId   String?
-  createdAt  DateTime @default(now())
+  reason        String
+  authorId      String?
+  createdAt     DateTime @default(now())
+  article       Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
 
   @@index([articleId])
   @@index([createdAt])
+}
+
+model Subscriber {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  status     String   @default("PENDING")
+  token      String   @unique
+  createdAt  DateTime @default(now())
+
+  @@index([status])
+}
+
+/// Live journalism streams (Facebook/YouTube/any platform) managed from the admin panel.
+model LiveStream {
+  id        String   @id @default(cuid())
+  title     String
+  url       String
+  bannerUrl String?
+  platform  String   @default("OTHER") // FACEBOOK | YOUTUBE | OTHER
+  isActive  Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
+model Obituary {
+  id            String    @id @default(cuid())
+  slug          String    @unique
+  name          String
+  age           Int?
+  photoUrl      String?
+  message       String
+  deathDate     DateTime?
+  submittedName String?
+  submittedPhone String?
+  status        String    @default("PENDING")
+  publishedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status, createdAt])
+  @@index([publishedAt])
+}
+
+model NewsTip {
+  id            String   @id @default(cuid())
+  name          String?
+  phone         String?
+  message       String
+  imageUrl      String?
+  status        String   @default("PENDING")
+  adminNotes    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status, createdAt])
 }

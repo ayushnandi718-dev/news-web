@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
+import { decodeSlug } from "@/lib/text";
 import { PUBLIC_VISIBLE_STATUSES } from "@/lib/config";
 import { handleError, ok } from "@/lib/api";
 
@@ -9,7 +10,8 @@ const DEDUPE_MINUTES = 30;
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   try {
-    const { slug } = await ctx.params;
+    const { slug: rawSlug } = await ctx.params;
+    const slug = decodeSlug(rawSlug);
     const article = await db.article.findUnique({
       where: { slug },
       select: { id: true, status: true },

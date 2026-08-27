@@ -1,4 +1,5 @@
 import { cacheWrap } from "./cache";
+import { logApiAlert, updateApiHealth } from "./monitoring";
 
 export type WeatherNow = {
   location: string;
@@ -169,8 +170,14 @@ async function fetchOwm(apiKey: string, spec: DistrictSpec): Promise<WeatherNow>
         res.status === 401
           ? "Weather API key invalid or not yet active."
           : `Weather provider returned ${res.status}.`;
+      updateApiHealth("openweathermap", false);
+      logApiAlert("openweathermap", res.status === 401 ? "critical" : "error", detail, {
+        district: spec.name,
+        status: res.status,
+      });
       throw new Error(detail);
     }
+    updateApiHealth("openweathermap", true);
     return normalize((await res.json()) as OwmResponse, spec);
   } finally {
     clearTimeout(timer);
@@ -185,7 +192,14 @@ async function fetchOpenMeteo(spec: DistrictSpec): Promise<WeatherNow> {
   const timer = setTimeout(() => ctrl.abort(), 8000);
   try {
     const res = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
-    if (!res.ok) throw new Error(`Backup weather provider returned ${res.status}.`);
+    if (!res.ok) {
+      updateApiHealth("open-meteo", false);
+      logApiAlert("open-meteo", "error", `Backup weather provider returned ${res.status}`, {
+        district: spec.name,
+      });
+      throw new Error(`Backup weather provider returned ${res.status}.`);
+    }
+    updateApiHealth("open-meteo", true);
     return normalizeOpenMeteo((await res.json()) as OpenMeteoResponse, spec);
   } finally {
     clearTimeout(timer);

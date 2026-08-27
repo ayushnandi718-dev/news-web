@@ -3,7 +3,7 @@ import { getTrending } from "@/lib/feeds";
 import { ArticleCard } from "@/components/ArticleCard";
 import TrendingList from "./TrendingList";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 export const metadata: Metadata = {
   title: "Trending Now",

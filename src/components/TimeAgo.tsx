@@ -1,7 +1,6 @@
 "use client";
-
 import { useEffect, useState } from "react";
-import { ageLabel, formatTime } from "@/lib/format";
+import { formatClockBn, ageLabelBn } from "@/lib/brand";
 
 export default function TimeAgo({
   publishedAt,
@@ -11,11 +10,14 @@ export default function TimeAgo({
   showClock?: boolean;
 }) {
   const [label, setLabel] = useState("");
+  const [clock, setClock] = useState("");
 
   useEffect(() => {
     if (!publishedAt) return;
-    const tick = () =>
-      setLabel(ageLabel(Math.max(0, (Date.now() - new Date(publishedAt).getTime()) / 60_000)));
+    const tick = () => {
+      setLabel(ageLabelBn(Math.max(0, (Date.now() - new Date(publishedAt).getTime()) / 60_000)));
+      setClock(formatClockBn(publishedAt));
+    };
     tick();
     const iv = setInterval(tick, 30_000);
     return () => clearInterval(iv);
@@ -24,7 +26,7 @@ export default function TimeAgo({
   if (!publishedAt) return null;
   return (
     <time dateTime={publishedAt} title={publishedAt}>
-      {showClock && <span className="tabular-nums">{formatTime(publishedAt)}</span>}
+      {showClock && clock && <span className="tabular-nums">{clock}</span>}
       {showClock && label && <span className="mx-1">·</span>}
       {label}
     </time>

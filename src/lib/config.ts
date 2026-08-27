@@ -108,7 +108,15 @@ export const INGEST_FETCH_TIMEOUT_MS = 10_000;
 export const INGEST_RETRIES = 2;
 export const INGEST_LOOKBACK_DAYS_FOR_DEDUPE = 7;
 
+export const NEWSAPI_BASE = "https://newsapi.org/v2";
+export function newsApiKey(): string {
+  return process.env.NEWS_API_KEY || "";
+}
+
 export const SESSION_COOKIE = "newsroom_session";
 export const SESSION_TTL_HOURS = 12;
 
 export const BREAKING_MAX_HOURS = 8;
+
+export const SESSION_REMEMBER_HOURS = 24 * 30;
+export const PASSWORD_RESET_TTL_MINUTES = 30;

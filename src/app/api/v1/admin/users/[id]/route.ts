@@ -30,6 +30,12 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       data,
       select: { id: true, email: true, name: true, role: true, active: true },
     });
+
+    // Invalidate sessions on role change or deactivation
+    if ((body.role && body.role !== target.role) || (body.active === false && target.active)) {
+      await db.adminSession.deleteMany({ where: { userId: id } });
+    }
+
     await audit({
       actorId: session.id,
       actorEmail: session.email,

@@ -111,17 +111,16 @@ export default function DashboardClient({ userName }: { userName: string }) {
 
   const load = useCallback(async () => {
     try {
-      const [s, q, l, b] = await Promise.all([
-        fetch("/api/v1/admin/stats", { cache: "no-store" }).then((r) => r.json()),
-        fetch("/api/v1/admin/news?status=IN_REVIEW&limit=5", { cache: "no-store" }).then((r) => r.json()),
-        fetch("/api/v1/admin/news?limit=8", { cache: "no-store" }).then((r) => r.json()),
-        fetch("/api/v1/news/breaking", { cache: "no-store" }).then((r) => r.json()),
-      ]);
-      if (s.ok) setStats(s.data);
-      else setError(s.error || "Failed to load stats");
-      if (q.ok) setQueue(q.data.items ?? []);
-      if (l.ok) setLatest(l.data.items ?? []);
-      if (b.ok) setBreaking(b.data.items ?? []);
+      // one request → stats + queue + latest + breaking (queries run server-side in parallel)
+      const r = await fetch("/api/v1/admin/dashboard/overview", { cache: "no-store" }).then((res) => res.json());
+      if (!r.ok) {
+        setError(r.error || "Failed to load dashboard");
+        return;
+      }
+      setStats(r.data.stats);
+      setQueue(r.data.queue);
+      setLatest(r.data.latest);
+      setBreaking(r.data.breaking);
     } catch {
       setError("Network error");
     }
@@ -334,7 +333,7 @@ export default function DashboardClient({ userName }: { userName: string }) {
                 { label: "New Article", href: "/admin/articles", icon: IconPlus, primary: true },
                 { label: "Review Queue", href: "/admin/articles?status=IN_REVIEW", icon: IconArticle },
                 { label: "Breaking Desk", href: "/admin/breaking", icon: IconZap },
-                { label: "Import Inbox", href: "/admin/inbox", icon: IconInbox },
+                { label: "Import Inbox", href: "/admin/articles?view=inbox", icon: IconInbox },
               ].map((qa) => (
                 <Link
                   key={qa.label}
@@ -415,12 +414,12 @@ export default function DashboardClient({ userName }: { userName: string }) {
                   bad={!!t && t.failedSources > 0}
                   href="/admin/sources"
                 />
-                <HealthRow label="Pending imports" value={t ? String(t.pendingImports) : "—"} bad={!!t && t.pendingImports > 0} href="/admin/inbox" />
+                <HealthRow label="Pending imports" value={t ? String(t.pendingImports) : "—"} bad={!!t && t.pendingImports > 0} href="/admin/articles?view=inbox" />
                 <HealthRow
                   label="Duplicate candidates"
                   value={t ? String(t.duplicateCandidates) : "—"}
                   bad={!!t && t.duplicateCandidates > 0}
-                  href="/admin/inbox?status=DUPLICATE_CANDIDATE"
+                  href="/admin/articles?view=inbox"
                 />
                 <HealthRow label="Drafts" value={t ? String(t.drafts) : "—"} href="/admin/articles?status=DRAFT" />
                 <HealthRow label="Expired breaking" value={t ? String(t.expiredBreaking) : "—"} href="/admin/breaking" />

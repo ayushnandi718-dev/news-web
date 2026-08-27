@@ -42,13 +42,13 @@ export default function Comments({ slug, enabled }: { slug: string; enabled: boo
       });
       const json = await res.json();
       if (json.ok) {
-        setMsg("Thanks — your comment is awaiting moderation.");
+        setMsg("ধন্যবাদ — আপনার মন্তব্য মডারেশনের অপেক্ষায় আছে।");
         setBody("");
       } else {
-        setMsg(json.error || "Could not post comment");
+        setMsg(json.error || "মন্তব্য পোস্ট করা যায়নি");
       }
     } catch {
-      setMsg("Network error");
+      setMsg("নেটওয়ার্ক সমস্যा");
     } finally {
       setBusy(false);
     }
@@ -58,12 +58,12 @@ export default function Comments({ slug, enabled }: { slug: string; enabled: boo
 
   return (
     <section className="mt-10">
-      <h2 className="section-title">Comments</h2>
+      <h2 className="section-title">মন্তব্য</h2>
       <form onSubmit={submit} className="space-y-2 rounded-lg border border-slate-200 bg-white p-4">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Your name"
+          placeholder="আপনার নাম"
           className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
           required
           minLength={2}
@@ -71,16 +71,16 @@ export default function Comments({ slug, enabled }: { slug: string; enabled: boo
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          placeholder="Add to the discussion…"
+          placeholder="মন্তব্য লিখুন…"
           rows={3}
           className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
           required
           minLength={3}
         />
         <div className="flex items-center justify-between">
-          <span className="text-xs text-slate-500">Comments are moderated.</span>
+          <span className="text-xs text-slate-500">মন্তব্য প্রকাশের আগে পর্যালোচনা করা হয়।</span>
           <button disabled={busy} className="rounded bg-brand px-4 py-1.5 text-sm font-bold text-white hover:bg-brand-dark disabled:opacity-50">
-            {busy ? "Posting…" : "Post comment"}
+            {busy ? "পাঠানো হচ্ছে…" : "মন্তব্য পাঠান"}
           </button>
         </div>
         {msg && <p className="text-xs text-slate-600">{msg}</p>}
@@ -88,9 +88,9 @@ export default function Comments({ slug, enabled }: { slug: string; enabled: boo
 
       <div className="mt-4 space-y-3">
         {items === null ? (
-          <p className="text-sm text-slate-400">Loading comments…</p>
+          <p className="text-sm text-slate-400">মন্তব্য লোড হচ্ছে…</p>
         ) : items.length === 0 ? (
-          <p className="text-sm text-slate-500">No approved comments yet.</p>
+          <p className="text-sm text-slate-500">এখনও কোনও অনুমোদিত মন্তব্য নেই।</p>
         ) : (
           items.map((c) => (
             <div key={c.id} className="rounded-lg border border-slate-100 bg-white p-3">

@@ -232,6 +232,58 @@ export async function searchNews(q: string, limit = 20): Promise<SerializedArtic
   return rows.map((a) => serializeArticle(a, now));
 }
 
+/**
+ * Related-story recommendations for the article page.
+ * Priority: same subcategory > same category > same region > same geographic
+ * scope > most recent. Never includes the current article.
+ */
+export async function getRelated(opts: {
+  id: string;
+  categoryId?: string | null;
+  subcategoryId?: string | null;
+  regionId?: string | null;
+  geographicScope?: string | null;
+  limit?: number;
+}): Promise<SerializedArticle[]> {
+  const limit = Math.min(12, Math.max(1, opts.limit ?? 6));
+  const now = new Date();
+  const base = {
+    status: { in: PUBLIC_VISIBLE_STATUSES },
+    publishedAt: { not: null, lte: now },
+    id: { not: opts.id },
+  };
+  const seen = new Set<string>([opts.id]);
+  const out: SerializedArticle[] = [];
+  const collect = (rows: Awaited<ReturnType<typeof fetchStage>>) => {
+    for (const row of rows) {
+      if (!seen.has(row.id)) {
+        seen.add(row.id);
+        out.push(row);
+      }
+    }
+  };
+  const fetchStage = async (extra: Record<string, unknown>): Promise<SerializedArticle[]> => {
+    const rows = await db.article.findMany({
+      where: { ...base, ...extra },
+      include: articleInclude,
+      orderBy: [{ publishedAt: "desc" }, { id: "desc" }],
+      take: limit,
+    });
+    return rows.map((a) => serializeArticle(a, now));
+  };
+
+  try {
+    if (opts.subcategoryId && out.length < limit) collect(await fetchStage({ subcategoryId: opts.subcategoryId }));
+    if (opts.categoryId && out.length < limit) collect(await fetchStage({ categoryId: opts.categoryId }));
+    if (opts.regionId && out.length < limit) collect(await fetchStage({ regionId: opts.regionId }));
+    if (opts.geographicScope && out.length < limit) collect(await fetchStage({ geographicScope: opts.geographicScope }));
+    if (out.length < limit) collect(await fetchStage({}));
+  } catch {
+    return out;
+  }
+  return out.slice(0, limit);
+}
+
 export async function getFeatured(limit = 4): Promise<SerializedArticle[]> {
   const now = new Date();
   return cacheWrap(`featured:${limit}:${Math.floor(now.getTime() / 60_000)}`, CACHE_TTL_SECONDS.home, ["home"], async () => {

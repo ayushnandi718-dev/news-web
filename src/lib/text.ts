@@ -1,14 +1,23 @@
 export function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^\p{L}\p{N}\s-]/gu, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 90);
+  return (
+    text
+      // Keep combining marks (\p{M}) so Bengali vowel signs/conjuncts survive.
+      .replace(/[^\p{L}\p{M}\p{N}\s-]/gu, "")
+      .trim()
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 90)
+  );
+}
+
+/** Safe slug lookup helper: URLs arrive percent-encoded. */
+export function decodeSlug(slug: string): string {
+  try {
+    return decodeURIComponent(slug);
+  } catch {
+    return slug;
+  }
 }
 
 const STOPWORDS = new Set([

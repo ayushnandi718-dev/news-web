@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { computeFreshness, type ClientFreshness } from "@/lib/format";
+import { FRESHNESS_BN } from "@/lib/brand";
 
 const STYLES: Record<string, string> = {
   JUST_IN: "bg-red-600 text-white",
@@ -34,7 +35,7 @@ export default function FreshnessBadge({
     <span
       className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${STYLES[f.key] ?? STYLES.OLDER} ${className}`}
     >
-      {f.label}
+      {FRESHNESS_BN[f.key] ?? f.label}
     </span>
   );
 }

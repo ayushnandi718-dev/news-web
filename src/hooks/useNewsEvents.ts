@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 export interface LivePublishedEvent {
   type: "article.published";
@@ -16,43 +16,77 @@ export interface BreakingEvent {
   type: "breaking.updated";
 }
 
-export type NewsSocketEvent = LivePublishedEvent | BreakingEvent | { type: "heartbeat" };
+export interface AdsEvent {
+  type: "ads.updated";
+}
+
+export interface LiveUpdatedEvent {
+  type: "live.updated";
+  hasActive: boolean;
+}
+
+export type NewsSocketEvent = LivePublishedEvent | BreakingEvent | AdsEvent | LiveUpdatedEvent | { type: "heartbeat" };
+
+type Listener = (e: NewsSocketEvent) => void;
+
+let sharedEs: EventSource | null = null;
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
+const listeners = new Set<Listener>();
+const connectedListeners = new Set<(c: boolean) => void>();
+let connected = false;
+
+function setConnected(v: boolean) {
+  connected = v;
+  for (const fn of connectedListeners) fn(v);
+}
+
+function connect() {
+  if (sharedEs) return;
+  const es = new EventSource("/api/v1/events");
+  sharedEs = es;
+  es.onopen = () => setConnected(true);
+  es.onerror = () => {
+    setConnected(false);
+    es.close();
+    sharedEs = null;
+    retryTimer = setTimeout(connect, 3000);
+  };
+  const types = ["article.published", "breaking.updated", "ads.updated", "live.updated"];
+  for (const t of types) {
+    es.addEventListener(t, (ev) => {
+      try {
+        const parsed = JSON.parse((ev as MessageEvent).data) as NewsSocketEvent;
+        for (const fn of listeners) fn(parsed);
+      } catch {}
+    });
+  }
+}
+
+function disconnect() {
+  if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+  if (sharedEs) { sharedEs.close(); sharedEs = null; }
+  setConnected(false);
+}
 
 export function useNewsEvents(onEvent?: (e: NewsSocketEvent) => void): { connected: boolean } {
-  const [connected, setConnected] = useState(false);
+  const [conn, setConn] = useState(connected);
   const handlerRef = useRef(onEvent);
   handlerRef.current = onEvent;
 
   useEffect(() => {
-    let es: EventSource | null = null;
-    let retry: ReturnType<typeof setTimeout> | null = null;
-    let closed = false;
+    const wrappedListener: Listener = (e) => handlerRef.current?.(e);
+    listeners.add(wrappedListener);
+    connectedListeners.add(setConn);
+    setConn(connected);
 
-    const connect = () => {
-      es = new EventSource("/api/v1/events");
-      es.onopen = () => setConnected(true);
-      es.onerror = () => {
-        setConnected(false);
-        es?.close();
-        if (!closed) retry = setTimeout(connect, 3000);
-      };
-      const types = ["article.published", "breaking.updated"];
-      for (const t of types) {
-        es.addEventListener(t, (ev) => {
-          try {
-            handlerRef.current?.(JSON.parse((ev as MessageEvent).data));
-          } catch {}
-        });
-      }
-    };
+    if (listeners.size === 1) connect();
 
-    connect();
     return () => {
-      closed = true;
-      if (retry) clearTimeout(retry);
-      es?.close();
+      listeners.delete(wrappedListener);
+      connectedListeners.delete(setConn);
+      if (listeners.size === 0) disconnect();
     };
   }, []);
 
-  return { connected };
+  return { connected: conn };
 }

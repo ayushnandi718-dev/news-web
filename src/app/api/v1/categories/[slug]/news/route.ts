@@ -4,6 +4,8 @@ import { handleError, ok } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
+const CACHE = "public, s-maxage=15, stale-while-revalidate=30";
+
 export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await ctx.params;
@@ -13,7 +15,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
       cursor: sp.get("cursor") ?? undefined,
       limit: sp.get("limit") ? parseInt(sp.get("limit")!, 10) : undefined,
     });
-    return ok({ ...data, category: slug });
+    return ok({ ...data, category: slug }, { headers: { "Cache-Control": CACHE } });
   } catch (err) {
     return handleError(err);
   }

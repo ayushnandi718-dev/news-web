@@ -6,10 +6,10 @@ import { iconFor, type DistrictWeather } from "@/lib/weather";
 
 function timeAgo(date: string): string {
   const seconds = Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / 1000));
-  if (seconds < 60) return `${seconds}s ago`;
+  if (seconds < 60) return `${seconds} সেকেন্ড আগে`;
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  return `${Math.floor(minutes / 60)}h ago`;
+  if (minutes < 60) return `${minutes} মিনিট আগে`;
+  return `${Math.floor(minutes / 60)} ঘণ্টা আগে`;
 }
 
 type WeatherResponse = {
@@ -27,11 +27,11 @@ export default function WeatherCard() {
     try {
       const res = await fetch("/api/v1/weather?district=alipurduar", { cache: "no-store" });
       const json = (await res.json()) as WeatherResponse;
-      if (!res.ok || !json.data?.weather) throw new Error(json.error ?? "Weather unavailable");
+      if (!res.ok || !json.data?.weather) throw new Error(json.error ?? "আবহাওয়া অনুপলব্ধ");
       setDistrict(json.data);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Weather unavailable");
+      setError(err instanceof Error ? err.message : "আবহাওয়া অনুপলব্ধ");
     } finally {
       setLoading(false);
     }
@@ -46,66 +46,71 @@ export default function WeatherCard() {
   const weather = district?.weather ?? null;
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">Weather</h2>
-          <p className="mt-0.5 text-[10px] text-slate-500">{weather?.location ?? district?.district ?? "Alipurduar"}, West Bengal</p>
-        </div>
-        {district?.stale && (
-          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
-            Stale
-          </span>
+    <section className="border border-slate-200/80 bg-white">
+      <header className="flex items-center justify-between border-b border-slate-200/70 px-3 py-2">
+        <h2 className="text-xs font-bold tracking-wide text-ink">আবহাওয়া</h2>
+        {weather && district?.stale && (
+          <span className="bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">পুরোনো</span>
+        )}
+      </header>
+
+      <div className="px-3 py-3">
+        <p className="text-[11px] font-medium text-slate-500">আলিপুরদুয়ার, পশ্চিমবঙ্গ</p>
+
+        {loading && !weather ? (
+          <div className="mt-2 h-[76px] animate-pulse bg-slate-100" />
+        ) : weather ? (
+          <>
+            <div className="mt-1 flex items-center justify-between">
+              <div className="flex items-start">
+                <span className="text-[42px] font-bold leading-none tabular-nums text-ink">
+                  {Math.round(weather.tempC)}
+                </span>
+                <span className="mt-1 text-sm font-semibold text-slate-500">°C</span>
+              </div>
+              <div className="text-right">
+                <span className="text-[26px] leading-none" aria-hidden>
+                  {iconFor(weather.iconCode)}
+                </span>
+                <p className="mt-0.5 text-[11px] font-medium capitalize text-slate-600">
+                  {weather.conditionText || weather.conditionMain}
+                </p>
+              </div>
+            </div>
+
+            <dl className="mt-3 grid grid-cols-3 gap-1 border-t border-slate-100 pt-2.5 text-center">
+              <div>
+                <dt className="text-[10px] text-slate-400">অনুভূত</dt>
+                <dd className="text-xs font-bold tabular-nums text-slate-700">{Math.round(weather.feelsLikeC)}°C</dd>
+              </div>
+              <div>
+                <dt className="text-[10px] text-slate-400">আর্দ্রতা</dt>
+                <dd className="text-xs font-bold tabular-nums text-slate-700">{weather.humidityPct}%</dd>
+              </div>
+              <div>
+                <dt className="text-[10px] text-slate-400">বাতাস</dt>
+                <dd className="text-xs font-bold tabular-nums text-slate-700">{weather.windKmh} km/h</dd>
+              </div>
+            </dl>
+          </>
+        ) : (
+          <p className="py-3 text-xs text-slate-500">আবহাওয়ার তথ্য এই মুহূর্তে পাওয়া যাচ্ছে না।</p>
         )}
       </div>
 
-      {loading && !weather ? (
-        <div className="h-20 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-900" />
-      ) : weather ? (
-        <>
-          <div className="flex items-center justify-between">
-            <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-black tabular-nums text-slate-900 dark:text-white">
-                {Math.round(weather.tempC)}
-              </span>
-              <span className="text-sm font-bold text-slate-500">°C</span>
-            </div>
-            <div className="text-right">
-              <span className="text-2xl leading-none" aria-hidden>{iconFor(weather.iconCode)}</span>
-              <p className="mt-1 text-[11px] font-semibold capitalize text-slate-600 dark:text-slate-400">
-                {weather.conditionText || weather.conditionMain}
-              </p>
-            </div>
-          </div>
-          <div className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-100 pt-3 text-center dark:border-slate-800">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Feels</p>
-              <p className="text-xs font-bold tabular-nums text-slate-700 dark:text-slate-300">{Math.round(weather.feelsLikeC)}°C</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Humidity</p>
-              <p className="text-xs font-bold tabular-nums text-slate-700 dark:text-slate-300">{weather.humidityPct}%</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Wind</p>
-              <p className="text-xs font-bold tabular-nums text-slate-700 dark:text-slate-300">{weather.windKmh} km/h</p>
-            </div>
-          </div>
-        </>
-      ) : (
-        <p className="py-4 text-xs text-slate-500">Weather is temporarily unavailable.</p>
-      )}
-
-      <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
-        <p className="text-[10px] text-slate-500">
-          {error ? "Refresh failed · showing last data" : weather ? `Updated ${timeAgo(weather.updatedAt)}` : "Connecting…"}
+      <footer className="flex items-center justify-between border-t border-slate-200/70 px-3 py-2">
+        <p className="text-[10px] text-slate-400">
+          {error ? "আপডেট ব্যর্থ · শেষ তথ্য দেখানো হচ্ছে" : weather ? `${timeAgo(weather.updatedAt)} আপডেট` : "সংযোগ হচ্ছে…"}
         </p>
         <button type="button" onClick={load} className="text-[10px] font-bold text-brand hover:underline">
-          Refresh
+          রিফ্রেশ
         </button>
-      </div>
-      <Link href="/weather" className="mt-2 block text-[10px] font-bold text-brand hover:underline">
-        All West Bengal districts →
+      </footer>
+      <Link
+        href="/weather"
+        className="block border-t border-slate-200/70 px-3 py-1.5 text-center text-[10px] font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-brand"
+      >
+        সমস্ত পশ্চিমবঙ্গ জেলা →
       </Link>
     </section>
   );

@@ -39,12 +39,12 @@ export default function BreakingTicker({ initial }: { initial: BreakingItem[] })
 
   return (
     <div className="flex items-stretch overflow-hidden bg-brand-ink text-white">
-      <div className="flex shrink-0 items-center gap-2 bg-brand px-3 py-2 text-xs font-extrabold uppercase tracking-wider">
+      <div className="flex shrink-0 items-center gap-2 bg-brand px-3 py-1.5 text-xs font-bold">
         <span className={`inline-block h-2 w-2 rounded-full bg-white ${connected ? "animate-pulseDot" : ""}`} />
-        Breaking
+        ব্রেকিং
       </div>
       <div className="relative flex-1 overflow-hidden">
-        <div className="whitespace-nowrap animate-ticker py-2 text-sm font-medium">
+        <div className="whitespace-nowrap animate-ticker py-1.5 text-sm font-medium">
           {items.map((b, i) => (
             <span key={b.id}>
               <Link href={b.url} className="mx-6 hover:underline">

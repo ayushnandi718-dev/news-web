@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { BRAND } from "@/lib/brand";
+import UIProvider from "@/components/ui/overlay";
+import ThemeToggle from "@/components/ThemeToggle";
+import { useActiveLive } from "@/hooks/useActiveLive";
 import {
   IconArticle,
   IconChart,
@@ -11,7 +15,6 @@ import {
   IconExternal,
   IconFolder,
   IconImage,
-  IconInbox,
   IconLayers,
   IconMapPin,
   IconMenu,
@@ -22,6 +25,11 @@ import {
   IconUsers,
   IconX,
   IconZap,
+  IconActivity,
+  IconGear,
+  IconLifeBuoy,
+  IconMegaphone,
+  IconBell,
 } from "./icons";
 
 interface NavItem {
@@ -29,6 +37,8 @@ interface NavItem {
   label: string;
   icon: (p: { className?: string }) => React.ReactElement;
   exact?: boolean;
+  /** required permission — hidden when the user lacks it */
+  permission?: string;
 }
 
 const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
@@ -36,30 +46,54 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     label: "Newsroom",
     items: [
       { href: "/admin", label: "Dashboard", icon: IconDashboard, exact: true },
-      { href: "/admin/articles", label: "Articles", icon: IconArticle },
-      { href: "/admin/breaking", label: "Breaking", icon: IconZap },
-      { href: "/admin/inbox", label: "Inbox", icon: IconInbox },
-      { href: "/admin/media", label: "Media", icon: IconImage },
+      { href: "/admin/articles", label: "Articles", icon: IconArticle, permission: "article.create" },
+      { href: "/admin/breaking", label: "Breaking", icon: IconZap, permission: "breaking.manage" },
+      { href: "/admin/live", label: "Live", icon: IconActivity, permission: "live.manage" },
+      { href: "/admin/media", label: "Media", icon: IconImage, permission: "media.upload" },
     ],
   },
   {
     label: "Content",
     items: [
-      { href: "/admin/categories", label: "Categories", icon: IconFolder },
-      { href: "/admin/subcategories", label: "Subcategories", icon: IconLayers },
-      { href: "/admin/regions", label: "Regions", icon: IconMapPin },
-      { href: "/admin/tags", label: "Tags", icon: IconTag },
+      { href: "/admin/categories", label: "Categories", icon: IconFolder, permission: "category.manage" },
+      { href: "/admin/subcategories", label: "Subcategories", icon: IconLayers, permission: "subcategory.manage" },
+      { href: "/admin/regions", label: "Regions", icon: IconMapPin, permission: "region.manage" },
+      { href: "/admin/tags", label: "Tags", icon: IconTag, permission: "tag.manage" },
     ],
   },
   {
     label: "Editorial",
     items: [
-      { href: "/admin/comments", label: "Comments", icon: IconComment },
-      { href: "/admin/analytics", label: "Analytics", icon: IconChart },
-      { href: "/admin/audit", label: "Audit", icon: IconShield },
-      { href: "/admin/users", label: "Team", icon: IconUsers },
-      { href: "/admin/sources", label: "Sources", icon: IconRss },
+      { href: "/admin/comments", label: "Comments", icon: IconComment, permission: "comment.moderate" },
+      { href: "/admin/analytics", label: "Analytics", icon: IconChart, permission: "analytics.view" },
+      { href: "/admin/audit", label: "Audit", icon: IconShield, permission: "audit.view" },
+      { href: "/admin/users", label: "Team", icon: IconUsers, permission: "user.view" },
+      { href: "/admin/sources", label: "Sources", icon: IconRss, permission: "source.view" },
     ],
+  },
+  {
+    label: "System",
+    items: [
+      { href: "/admin/settings", label: "Site Settings", icon: IconGear, permission: "settings.manage" },
+      { href: "/admin/push", label: "Push Notifications", icon: IconBell, permission: "article.publish" },
+      { href: "/admin/security", label: "Security", icon: IconShield, exact: false },
+      { href: "/admin/monitoring", label: "API Health", icon: IconActivity, permission: "dashboard.view" },
+    ],
+  },
+  {
+    label: "Advertisement",
+    items: [{ href: "/admin/ads", label: "Ads Manager", icon: IconMegaphone, permission: "ads.manage" }],
+  },
+  {
+    label: "Community",
+    items: [
+      { href: "/admin/obituaries", label: "Obituaries", icon: IconComment },
+      { href: "/admin/tips", label: "News Tips", icon: IconBell },
+    ],
+  },
+  {
+    label: "Support",
+    items: [{ href: "/admin/support", label: "Tech Support", icon: IconLifeBuoy, exact: true }],
   },
 ];
 
@@ -79,13 +113,15 @@ export default function AdminShell({
   user,
   children,
 }: {
-  user: { name: string; email: string; role: string };
+  user: { name: string; email: string; role: string; permissions?: string[] };
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { hasActive: liveActive } = useActiveLive();
 
   useEffect(() => {
     setCollapsed(localStorage.getItem("newsroom_sidebar") === "collapsed");
@@ -117,27 +153,96 @@ export default function AdminShell({
     .join("")
     .toUpperCase();
 
+  const perms = user.permissions ?? [];
+  const canViewAudit = perms.includes("audit.view");
+  const canViewUsers = perms.includes("user.view");
+
+  const userMenu = (
+    <div className="relative">
+      <button
+        onClick={() => setMenuOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        className="flex items-center gap-2 rounded-lg p-1 pr-2 transition hover:bg-slate-100"
+      >
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-[11px] font-bold text-white">
+          {initials || "?"}
+        </span>
+        <div className="hidden text-left md:block">
+          <p className="text-xs font-bold leading-tight text-brand-ink">{user.name}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide leading-tight text-slate-400">
+            {user.role.replace(/_/g, " ")}
+          </p>
+        </div>
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className={`hidden text-slate-400 transition md:block ${menuOpen ? "rotate-180" : ""}`} aria-hidden="true">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+
+      {menuOpen && (
+        <>
+          <button className="fixed inset-0 z-40 cursor-default" aria-hidden="true" tabIndex={-1} onClick={() => setMenuOpen(false)} />
+          <div role="menu" className="absolute right-0 z-50 mt-1.5 w-60 overflow-hidden rounded-xl border border-slate-200 bg-white py-1.5 shadow-lg">
+            <div className="border-b border-slate-100 px-3.5 pb-2.5 pt-1.5">
+              <p className="truncate text-sm font-bold text-brand-ink">{user.name}</p>
+              <p className="truncate text-xs text-slate-500">{user.email}</p>
+              <span className="mt-1.5 inline-block rounded bg-brand/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand">
+                {user.role.replace(/_/g, " ")}
+              </span>
+            </div>
+            <a href="/admin/security" role="menuitem" onClick={() => setMenuOpen(false)} className="block px-3.5 py-2 text-[13px] font-medium text-slate-600 transition hover:bg-slate-50 hover:text-brand-ink">
+              Security
+            </a>
+            {canViewAudit && (
+              <a href="/admin/audit" role="menuitem" onClick={() => setMenuOpen(false)} className="block px-3.5 py-2 text-[13px] font-medium text-slate-600 transition hover:bg-slate-50 hover:text-brand-ink">
+                Activity
+              </a>
+            )}
+            {canViewUsers && (
+              <a href="/admin/users" role="menuitem" onClick={() => setMenuOpen(false)} className="block px-3.5 py-2 text-[13px] font-medium text-slate-600 transition hover:bg-slate-50 hover:text-brand-ink">
+                Profile &amp; Team
+              </a>
+            )}
+            <div className="mt-1 border-t border-slate-100 pt-1">
+              <button
+                role="menuitem"
+                onClick={logout}
+                className="w-full px-3.5 py-2 text-left text-[13px] font-semibold text-red-600 transition hover:bg-red-50"
+              >
+                Sign out
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
   const sidebarBody = (
     <div className="flex h-full flex-col">
       <div className={`flex h-14 shrink-0 items-center gap-2.5 border-b border-slate-200 px-4 ${collapsed ? "justify-center px-0" : ""}`}>
         <Link href="/admin" className="flex items-center gap-2.5 overflow-hidden">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-brand text-sm font-black text-white">N</span>
+          <span className="flex h-7 min-w-7 shrink-0 items-center justify-center rounded bg-brand px-1 text-xs font-black tracking-tight text-white">DK</span>
           {!collapsed && (
-            <span className="truncate text-[15px] font-black tracking-tight text-brand-ink">
-              NewsWeb <span className="font-semibold text-slate-400">Newsroom</span>
+            <span className="flex min-w-0 flex-col leading-tight">
+              <span className="truncate text-[15px] font-black tracking-tight text-brand-ink">{BRAND.bn}</span>
+              <span className="truncate text-[9px] font-bold uppercase tracking-[0.22em] text-slate-400">Newsroom</span>
             </span>
           )}
         </Link>
       </div>
 
       <nav aria-label="Newsroom sections" className="flex-1 overflow-y-auto px-2 py-3">
-        {NAV_GROUPS.map((group) => (
+        {NAV_GROUPS.map((group) => {
+          const visible = group.items.filter((item) => !item.permission || perms.includes(item.permission));
+          if (visible.length === 0) return null;
+          return (
           <div key={group.label} className="mb-4">
             {!collapsed && (
               <p className="mb-1 px-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">{group.label}</p>
             )}
             <ul className="space-y-0.5">
-              {group.items.map((item) => {
+              {visible.map((item) => {
                 const active = isActive(pathname, item);
                 const Icon = item.icon;
                 return (
@@ -153,13 +258,17 @@ export default function AdminShell({
                     >
                       <Icon className="h-[17px] w-[17px] shrink-0" />
                       {!collapsed && <span className="truncate">{item.label}</span>}
+                      {!collapsed && item.href === "/admin/live" && liveActive && (
+                        <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-red-500 animate-pulseDot" aria-label="Live active" />
+                      )}
                     </Link>
                   </li>
                 );
               })}
             </ul>
           </div>
-        ))}
+          );
+        })}
       </nav>
 
       <div className={`shrink-0 border-t border-slate-200 p-3 ${collapsed ? "px-1" : ""}`}>
@@ -187,7 +296,8 @@ export default function AdminShell({
   );
 
   return (
-    <div className="min-h-screen bg-slate-100/60">
+    <UIProvider>
+      <div className="min-h-screen bg-slate-100/60">
       {/* Desktop sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-40 hidden border-r border-slate-200 bg-white transition-all duration-150 lg:block ${
@@ -249,23 +359,19 @@ export default function AdminShell({
               View site
             </Link>
             <Link
-              href="/admin/breaking"
-              aria-label="Breaking news desk"
+              href="/admin/live"
+              aria-label="Live desk"
               className="relative rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 hover:text-brand"
             >
-              <IconZap className="h-[18px] w-[18px]" />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-brand animate-pulseDot" aria-hidden="true" />
+              <IconActivity className="h-[18px] w-[18px]" />
+              {liveActive && (
+                <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-red-500 animate-pulseDot ring-2 ring-white" aria-hidden="true" />
+              )}
             </Link>
             <span className="mx-1 hidden h-6 w-px bg-slate-200 sm:block" aria-hidden="true" />
-            <div className="hidden items-center gap-2 sm:flex">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-[11px] font-bold text-white">
-                {initials || "?"}
-              </span>
-              <div className="hidden md:block">
-                <p className="text-xs font-bold leading-tight text-brand-ink">{user.name}</p>
-                <p className="text-[10px] font-semibold uppercase tracking-wide leading-tight text-slate-400">{user.role.replace(/_/g, " ")}</p>
-              </div>
-            </div>
+            <ThemeToggle />
+            <span className="mx-1 hidden h-6 w-px bg-slate-200 sm:block" aria-hidden="true" />
+            {userMenu}
           </div>
         </header>
 
@@ -279,7 +385,7 @@ export default function AdminShell({
         aria-label="Primary newsroom navigation"
         className="fixed inset-x-0 bottom-0 z-40 flex h-14 items-stretch border-t border-slate-200 bg-white/95 backdrop-blur lg:hidden"
       >
-        {MOBILE_PRIMARY.map((item) => {
+        {MOBILE_PRIMARY.filter((item) => !item.permission || perms.includes(item.permission)).map((item) => {
           const active = isActive(pathname, item);
           const Icon = item.icon;
           return (
@@ -304,6 +410,7 @@ export default function AdminShell({
           More
         </button>
       </nav>
-    </div>
+      </div>
+    </UIProvider>
   );
 }

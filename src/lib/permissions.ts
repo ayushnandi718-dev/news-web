@@ -14,6 +14,8 @@ export const PERMISSIONS = [
   "article.manage_corrections",
   "article.view_revisions",
   "breaking.manage",
+  "live.manage",
+  "ads.manage",
   "feature.manage",
   "category.manage",
   "category.create",
@@ -74,12 +76,14 @@ const MATRIX: Record<Role, Permission[]> = {
     "article.manage_seo",
     "article.manage_corrections",
     "article.view_revisions",
-    "breaking.manage",
-    "feature.manage",
-    "category.manage",
-    "category.create",
-    "category.edit",
-    "category.delete",
+      "breaking.manage",
+      "live.manage",
+      "ads.manage",
+      "feature.manage",
+      "category.manage",
+      "category.create",
+      "category.edit",
+      "category.delete",
     "subcategory.manage",
     "subcategory.create",
     "subcategory.edit",
@@ -119,12 +123,14 @@ const MATRIX: Record<Role, Permission[]> = {
     "article.manage_seo",
     "article.manage_corrections",
     "article.view_revisions",
-    "breaking.manage",
-    "feature.manage",
-    "category.manage",
-    "category.create",
-    "category.edit",
-    "subcategory.manage",
+      "breaking.manage",
+      "live.manage",
+      "ads.manage",
+      "feature.manage",
+      "category.manage",
+      "category.create",
+      "category.edit",
+      "subcategory.manage",
     "subcategory.create",
     "subcategory.edit",
     "region.manage",
@@ -227,6 +233,14 @@ export function canManageSources(session: { role: string }): boolean {
 
 export function canManageInbox(session: { role: string }): boolean {
   return can(session.role, "inbox.manage");
+}
+
+export function canManageLive(session: { role: string }): boolean {
+  return can(session.role, "live.manage");
+}
+
+export function canManageAds(session: { role: string }): boolean {
+  return can(session.role, "ads.manage");
 }
 
 export function canManageAnalytics(session: { role: string }): boolean {

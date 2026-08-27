@@ -1,0 +1,55 @@
+{
+  "id": "/",
+  "name": "দুয়ারসের খবর — Dooarser Khabar",
+  "short_name": "দুয়ারসের খবর",
+  "description": "আলিপুরদুয়ার ও ডুয়ার্সের ব্রেকিং বাংলা নিউজ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#faf9f5",
+  "theme_color": "#c8102e",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "bn",
+  "dir": "ltr",
+  "categories": ["news", "local"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "ব্রেকিং নিউজ",
+      "short_name": "Breaking",
+      "url": "/trending",
+      "description": "সর্বশেষ ব্রেকিং নিউজ"
+    },
+    {
+      "name": "ক্যাটাগরি",
+      "short_name": "Categories",
+      "url": "/news",
+      "description": "সব ক্যাটাগরি দেখুন"
+    }
+  ]
+}

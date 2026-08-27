@@ -16,11 +16,41 @@ interface MediaRow {
   alt: string | null;
 }
 
-export interface ArticleEditorProps {
-  onSaved: () => void;
+export interface EditorArticle {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  status: string;
+  featuredImage: string | null;
+  imageCaption: string | null;
+  imageCredit: string | null;
+  categoryId: string;
+  subcategoryId: string | null;
+  regionId: string | null;
+  scheduledAt: string | null;
+  isBreaking: boolean;
+  isFeatured: boolean;
+  editorialPriority: number;
+  geographicPriority: number;
+  geographicScope: string;
+  district: string | null;
+  state: string | null;
+  country: string | null;
+  sourceNotes: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  ogImage: string | null;
+  tagNames: string[];
 }
 
-export default function ArticleEditor({ onSaved }: ArticleEditorProps) {
+export interface ArticleEditorProps {
+  onSaved: () => void;
+  article?: EditorArticle;
+}
+
+export default function ArticleEditor({ onSaved, article }: ArticleEditorProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<any[]>([]);
   const [regions, setRegions] = useState<any[]>([]);
@@ -60,11 +90,14 @@ export default function ArticleEditor({ onSaved }: ArticleEditorProps) {
   const [dirty, setDirty] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const formRef = useRef(form);
   formRef.current = form;
   const fileRef = useRef<HTMLInputElement>(null);
+  const uploadTargetRef = useRef<"featuredImage" | "ogImage">("featuredImage");
+  const contentRef = useRef<HTMLTextAreaElement>(null);
 
-  async function handleUpload(file: File) {
+  async function handleUpload(file: File, field: "featuredImage" | "ogImage" = "featuredImage") {
     setUploading(true);
     setError("");
     try {
@@ -78,7 +111,7 @@ export default function ArticleEditor({ onSaved }: ArticleEditorProps) {
         return;
       }
       setMedia((m) => [json.data.media, ...m]);
-      update({ featuredImage: json.data.media.url });
+      update({ [field]: json.data.media.url } as Partial<typeof form>);
     } catch {
       setError("Image upload failed — check connection and try again.");
     } finally {
@@ -109,7 +142,7 @@ export default function ArticleEditor({ onSaved }: ArticleEditorProps) {
       })
       .catch(() => {});
 
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && !article) {
       const cached = localStorage.getItem("article_editor_draft");
       if (cached) {
         try {
@@ -117,6 +150,43 @@ export default function ArticleEditor({ onSaved }: ArticleEditorProps) {
         } catch {}
       }
     }
+  }, []);
+
+  // Prefill when editing an existing article
+  useEffect(() => {
+    if (!article) return;
+    setForm((f) => ({
+      ...f,
+      title: article.title,
+      slug: article.slug,
+      slugLocked: true,
+      excerpt: article.excerpt,
+      content: article.content,
+      categoryId: article.categoryId || f.categoryId,
+      subcategoryId: "",
+      regionId: article.regionId ?? "",
+      featuredImage: article.featuredImage ?? "",
+      imageCaption: article.imageCaption ?? "",
+      imageCredit: article.imageCredit ?? "",
+      tags: article.tagNames.join(", "),
+      status: article.status,
+      scheduledAt: article.scheduledAt ? new Date(article.scheduledAt).toISOString().slice(0, 16) : "",
+      isBreaking: article.isBreaking,
+      isFeatured: article.isFeatured,
+      editorialPriority: article.editorialPriority,
+      geographicPriority: article.geographicPriority,
+      geographicScope: article.geographicScope,
+      district: article.district ?? "",
+      state: article.state ?? "",
+      country: article.country ?? "",
+      sourceNotes: article.sourceNotes ?? "",
+      seoTitle: article.seoTitle ?? "",
+      seoDescription: article.seoDescription ?? "",
+      ogImage: article.ogImage ?? "",
+    }));
+    setDirty(false);
+    keepSubRef.current = article.subcategoryId ?? "";
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -130,6 +200,7 @@ export default function ArticleEditor({ onSaved }: ArticleEditorProps) {
   }, [showMedia, media.length]);
 
   // Load subcategories when category changes
+  const keepSubRef = useRef<string | null>(null);
   useEffect(() => {
     if (!form.categoryId) {
       setSubcategories([]);
@@ -141,7 +212,8 @@ export default function ArticleEditor({ onSaved }: ArticleEditorProps) {
       .then((j) => {
         if (j.ok) {
           setSubcategories(j.data.items);
-          setForm((f) => ({ ...f, subcategoryId: "" }));
+          setForm((f) => ({ ...f, subcategoryId: keepSubRef.current ?? "" }));
+          keepSubRef.current = null;
         }
       })
       .catch(() => {});
@@ -158,73 +230,170 @@ export default function ArticleEditor({ onSaved }: ArticleEditorProps) {
   }, [dirty]);
 
   useEffect(() => {
-    if (!dirty) return;
+    if (!dirty || article) return;
     const t = setTimeout(() => {
       localStorage.setItem("article_editor_draft", JSON.stringify(formRef.current));
       setSavedAt(new Date().toLocaleTimeString());
     }, 1200);
     return () => clearTimeout(t);
-  }, [form, dirty]);
+  }, [form, dirty, article]);
 
   function update(patch: Partial<typeof form>) {
     setForm((f) => ({ ...f, ...patch }));
     setDirty(true);
   }
 
+  function wrapSelection(field: "content" | "excerpt", before: string, after: string) {
+    const el = contentRef.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const text = form[field];
+    const selected = text.slice(start, end) || "text";
+    const newVal = text.slice(0, start) + before + selected + after + text.slice(end);
+    update({ [field]: newVal });
+    setTimeout(() => {
+      el.focus();
+      el.selectionStart = start + before.length;
+      el.selectionEnd = start + before.length + selected.length;
+    }, 0);
+  }
+
+  function prependLine(field: "content" | "excerpt", prefix: string) {
+    const el = contentRef.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const text = form[field];
+    const lineStart = text.lastIndexOf("\n", start - 1) + 1;
+    const newVal = text.slice(0, lineStart) + prefix + text.slice(lineStart);
+    update({ [field]: newVal });
+    setTimeout(() => {
+      el.focus();
+      el.selectionStart = el.selectionEnd = lineStart + prefix.length;
+    }, 0);
+  }
+
   async function save(publishNow: boolean) {
     setBusy(true);
     setError("");
     try {
-      const res = await fetch("/api/v1/admin/news", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          title: form.title,
-          slug: form.slug || undefined,
-          excerpt: form.excerpt,
-          content: form.content,
-          categoryId: form.categoryId,
-          subcategoryId: form.subcategoryId || undefined,
-          regionId: form.regionId || undefined,
-          featuredImage: form.featuredImage || undefined,
-          imageCaption: form.imageCaption || undefined,
-          imageCredit: form.imageCredit || undefined,
-          status: publishNow ? "PUBLISHED" : "DRAFT",
-          scheduledAt: !publishNow && form.scheduledAt ? new Date(form.scheduledAt).toISOString() : undefined,
-          isBreaking: form.isBreaking,
-          breakingMinutes: form.isBreaking ? Number(form.breakingMinutes) : undefined,
-          isFeatured: form.isFeatured,
-          editorialPriority: Number(form.editorialPriority),
-          geographicPriority: Number(form.geographicPriority),
-          geographicScope: form.geographicScope,
-          district: form.district || undefined,
-          state: form.state || undefined,
-          country: form.country || undefined,
-          sourceNotes: form.sourceNotes || undefined,
-          seoTitle: form.seoTitle || undefined,
-          seoDescription: form.seoDescription || undefined,
-          ogImage: form.ogImage || undefined,
-          tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 8),
-        }),
-      });
-      const json = await res.json();
-      if (!json.ok) {
-        setError(json.error || "Save failed");
+      const slugValue = form.slug?.trim() && /^[\p{L}\p{M}\p{N}-]+$/u.test(form.slug.trim()) && form.slug.trim().length >= 3
+        ? form.slug.trim()
+        : slugify(form.title) || `story-${Date.now()}`;
+
+      const shared = {
+        title: form.title,
+        slug: slugValue,
+        excerpt: form.excerpt,
+        content: form.content,
+        categoryId: form.categoryId,
+        subcategoryId: form.subcategoryId || null,
+        regionId: form.regionId || null,
+        featuredImage: form.featuredImage || null,
+        imageCaption: form.imageCaption || null,
+        imageCredit: form.imageCredit || null,
+        isFeatured: form.isFeatured,
+        editorialPriority: Number(form.editorialPriority),
+        geographicPriority: Number(form.geographicPriority),
+        geographicScope: form.geographicScope,
+        district: form.district || null,
+        state: form.state || null,
+        country: form.country || null,
+        sourceNotes: form.sourceNotes || null,
+        seoTitle: form.seoTitle || null,
+        seoDescription: form.seoDescription || null,
+        ogImage: form.ogImage || null,
+        tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 8),
+      };
+
+      let lastError = "";
+      if (article) {
+        const patch: Record<string, unknown> = {
+          ...shared,
+          scheduledAt: form.scheduledAt ? new Date(form.scheduledAt).toISOString() : null,
+        };
+        const res = await fetch(`/api/v1/admin/news/${article.id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(patch),
+        });
+        const json = await res.json();
+        if (!json.ok) {
+          setError(json.error || "Save failed");
+          return;
+        }
+        const actions: string[] = [];
+        if (publishNow && article.status !== "PUBLISHED") actions.push("publish");
+        if (form.isBreaking !== article.isBreaking) {
+          actions.push(form.isBreaking ? "mark_breaking" : "remove_breaking");
+        }
+        for (const action of actions) {
+          const r2 = await fetch(`/api/v1/admin/news/${article.id}`, {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              action,
+              breakingMinutes: form.isBreaking && action === "mark_breaking" ? Number(form.breakingMinutes) : undefined,
+            }),
+          });
+          const j2 = await r2.json();
+          if (!j2.ok) {
+            if (r2.status === 422 && Array.isArray(j2.issues) && j2.issues.length > 0) {
+              const blocking = j2.issues.filter((i: { severity: string }) => i.severity === "error");
+              const warnings = j2.issues.filter((i: { severity: string }) => i.severity === "warning");
+              const lines: string[] = [];
+              if (blocking.length) {
+                lines.push("Cannot publish — fix these issues:");
+                for (const i of blocking) lines.push(`  • ${i.field}: ${i.message}`);
+              }
+              if (warnings.length) {
+                lines.push("Warnings (non-blocking):");
+                for (const i of warnings) lines.push(`  • ${i.field}: ${i.message}`);
+              }
+              lastError = lines.join("\n");
+            } else {
+              lastError = j2.error || `${action} failed`;
+            }
+          }
+        }
+        if (lastError) {
+          setError(lastError);
+          return;
+        }
+      } else {
+        const res = await fetch("/api/v1/admin/news", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            ...shared,
+            status: publishNow ? "PUBLISHED" : "DRAFT",
+            scheduledAt: !publishNow && form.scheduledAt ? new Date(form.scheduledAt).toISOString() : undefined,
+            isBreaking: form.isBreaking,
+            breakingMinutes: form.isBreaking ? Number(form.breakingMinutes) : undefined,
+          }),
+        });
+        const json = await res.json();
+        if (!json.ok) {
+          setError(json.error || "Save failed");
+          return;
+        }
+        localStorage.removeItem("article_editor_draft");
+        setDirty(false);
+        onSaved();
+        setForm({
+          title: "", slug: "", slugLocked: false, excerpt: "", content: "", categoryId: categories[0]?.id ?? "",
+          subcategoryId: "", regionId: "",
+          featuredImage: "", imageCaption: "", imageCredit: "", tags: "", status: "DRAFT",
+          scheduledAt: "", isBreaking: false, breakingMinutes: 120, isFeatured: false, editorialPriority: 0,
+          geographicPriority: 0, geographicScope: "LOCAL",
+          district: "", state: "", country: "", sourceNotes: "", seoTitle: "", seoDescription: "", ogImage: "",
+        });
         return;
       }
-      localStorage.removeItem("article_editor_draft");
       setDirty(false);
       onSaved();
-      setForm({
-        title: "", slug: "", slugLocked: false, excerpt: "", content: "", categoryId: categories[0]?.id ?? "",
-        subcategoryId: "", regionId: "",
-        featuredImage: "", imageCaption: "", imageCredit: "", tags: "", status: "DRAFT",
-        scheduledAt: "", isBreaking: false, breakingMinutes: 120, isFeatured: false, editorialPriority: 0,
-        geographicPriority: 0, geographicScope: "LOCAL",
-        district: "", state: "", country: "", sourceNotes: "", seoTitle: "", seoDescription: "", ogImage: "",
-      });
     } catch {
-      setError("Network error — your draft is saved locally.");
+      setError("Network error — your changes are still in the form.");
     } finally {
       setBusy(false);
     }
@@ -264,14 +433,37 @@ export default function ArticleEditor({ onSaved }: ArticleEditorProps) {
         className="mt-3 w-full rounded border border-slate-300 px-3 py-2 text-sm"
         required
       />
-      <textarea
-        value={form.content}
-        onChange={(e) => update({ content: e.target.value })}
-        placeholder="Full story body…"
-        rows={8}
-        className="mt-2 w-full rounded border border-slate-300 px-3 py-2 text-sm leading-relaxed"
-        required
-      />
+      <div className="mt-2">
+        <div className="flex flex-wrap items-center gap-1 rounded-t border border-b-0 border-slate-300 bg-slate-50 px-2 py-1">
+          <FormatBtn label="B" title="Bold" onClick={() => wrapSelection("content", "**", "**")} />
+          <FormatBtn label="I" title="Italic" onClick={() => wrapSelection("content", "*", "*")} />
+          <span className="mx-1 h-4 w-px bg-slate-300" />
+          <FormatBtn label="H2" title="Heading" onClick={() => prependLine("content", "## ")} />
+          <FormatBtn label="H3" title="Subheading" onClick={() => prependLine("content", "### ")} />
+          <span className="mx-1 h-4 w-px bg-slate-300" />
+          <FormatBtn label="•" title="Bullet list" onClick={() => prependLine("content", "- ")} />
+          <FormatBtn label="1." title="Numbered list" onClick={() => prependLine("content", "1. ")} />
+          <FormatBtn label="&quot;&quot;" title="Quote" onClick={() => prependLine("content", "> ")} />
+          <span className="mx-1 h-4 w-px bg-slate-300" />
+          <FormatBtn label="Link" title="Insert link" onClick={() => wrapSelection("content", "[", "](url)")} />
+        </div>
+        <textarea
+          ref={contentRef}
+          value={form.content}
+          onChange={(e) => update({ content: e.target.value })}
+          placeholder="Full story body…"
+          rows={10}
+          className="w-full rounded-b border border-slate-300 px-3 py-2 font-mono text-sm leading-relaxed focus:border-brand focus:outline-none"
+          required
+        />
+        <p className="mt-1 flex items-center gap-2 text-[11px] text-slate-400">
+          <span>{form.content.trim().split(/\s+/).filter(Boolean).length} words</span>
+          <span>·</span>
+          <span>{Math.max(1, Math.ceil(form.content.trim().split(/\s+/).filter(Boolean).length / 200))} min read</span>
+          <span>·</span>
+          <span>{form.content.length} chars</span>
+        </p>
+      </div>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <select
@@ -312,34 +504,58 @@ export default function ArticleEditor({ onSaved }: ArticleEditorProps) {
         />
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-        <input
-          value={form.featuredImage}
-          onChange={(e) => update({ featuredImage: e.target.value })}
-          placeholder="Featured image URL"
-          className="min-w-48 flex-1 rounded border border-slate-300 px-2 py-1.5"
-        />
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
-          className="hidden"
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          const f = e.dataTransfer.files?.[0];
+          if (f && f.type.startsWith("image/")) handleUpload(f);
+        }}
+        className={`mt-2 rounded-lg border-2 border-dashed p-2 transition-colors ${
+          dragOver ? "border-brand bg-brand/5" : "border-slate-200"
+        }`}
+      >
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <input
+            value={form.featuredImage}
+            onChange={(e) => update({ featuredImage: e.target.value })}
+            placeholder="Featured image URL — or drop an image anywhere in this box"
+            className="min-w-48 flex-1 rounded border border-slate-300 px-2 py-1.5"
+          />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+            className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
-            if (f) handleUpload(f);
+            if (f) handleUpload(f, uploadTargetRef.current);
           }}
-        />
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          className="rounded bg-slate-800 px-2 py-1.5 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
-        >
-          {uploading ? "Uploading…" : "⬆ Upload image"}
-        </button>
-        <button type="button" onClick={() => setShowMedia((v) => !v)} className="rounded border border-slate-300 px-2 py-1.5 text-xs font-semibold hover:border-brand hover:text-brand">
-          Pick from library
-        </button>
+          />
+          <button
+            type="button"
+            onClick={() => {
+              uploadTargetRef.current = "featuredImage";
+              fileRef.current?.click();
+            }}
+            disabled={uploading}
+            className="rounded bg-slate-800 px-2 py-1.5 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
+          >
+            {uploading ? "Uploading…" : "⬆ Choose file"}
+          </button>
+          <button type="button" onClick={() => setShowMedia((v) => !v)} className="rounded border border-slate-300 px-2 py-1.5 text-xs font-semibold hover:border-brand hover:text-brand">
+            Pick from library
+          </button>
+        </div>
+        {uploading && <p className="mt-1 text-xs font-semibold text-brand">Uploading image…</p>}
+        {!uploading && (
+          <p className="mt-1 text-xs text-slate-400">Drag &amp; drop an image from your device here (JPEG, PNG, WebP, GIF — max 8 MB)</p>
+        )}
       </div>
       {form.featuredImage && (
         <div className="mt-2">
@@ -490,12 +706,25 @@ export default function ArticleEditor({ onSaved }: ArticleEditorProps) {
             rows={2}
             className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
           />
-          <input
-            value={form.ogImage}
-            onChange={(e) => update({ ogImage: e.target.value })}
-            placeholder="Open Graph Image URL (optional - for social sharing)"
-            className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
-          />
+          <div className="flex gap-2">
+            <input
+              value={form.ogImage}
+              onChange={(e) => update({ ogImage: e.target.value })}
+              placeholder="Open Graph Image URL (optional - for social sharing)"
+              className="min-w-0 flex-1 rounded border border-slate-300 px-2 py-1.5 text-sm"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                uploadTargetRef.current = "ogImage";
+                fileRef.current?.click();
+              }}
+              disabled={uploading}
+              className="shrink-0 rounded bg-slate-800 px-2 py-1.5 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
+            >
+              {uploading ? "…" : "⬆"}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -512,26 +741,67 @@ export default function ArticleEditor({ onSaved }: ArticleEditorProps) {
 
       <div className="mt-4 flex items-center justify-between">
         <span className="text-xs text-slate-400">
-          {savedAt ? `Draft autosaved locally at ${savedAt}` : dirty ? "Editing…" : ""}
+          {article
+            ? `Editing “${article.title.slice(0, 40)}${article.title.length > 40 ? "…" : ""}” · ${article.status}`
+            : savedAt
+              ? `Draft autosaved locally at ${savedAt}`
+              : dirty
+                ? "Editing…"
+                : ""}
         </span>
         <div className="flex gap-2">
-          <button
-            onClick={() => save(false)}
-            disabled={busy || !form.title || !form.excerpt || !form.content}
-            className="rounded border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 hover:border-brand hover:text-brand disabled:opacity-40"
-          >
-            {form.scheduledAt ? "Schedule" : "Save draft"}
-          </button>
-          <button
-            onClick={() => save(true)}
-            disabled={busy || !form.title || !form.excerpt || !form.content}
-            className="rounded bg-brand px-5 py-2 text-sm font-bold text-white hover:bg-brand-dark disabled:opacity-40"
-          >
-            {busy ? "Saving…" : "Publish now"}
-          </button>
+          {article ? (
+            <>
+              <button
+                onClick={() => save(false)}
+                disabled={busy || !form.title || !form.excerpt || !form.content}
+                className="rounded border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 hover:border-brand hover:text-brand disabled:opacity-40"
+              >
+                Save changes
+              </button>
+              {article.status !== "PUBLISHED" && (
+                <button
+                  onClick={() => save(true)}
+                  disabled={busy || !form.title || !form.excerpt || !form.content}
+                  className="rounded bg-brand px-5 py-2 text-sm font-bold text-white hover:bg-brand-dark disabled:opacity-40"
+                >
+                  {busy ? "Saving…" : "Publish now"}
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => save(false)}
+                disabled={busy || !form.title || !form.excerpt || !form.content}
+                className="rounded border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 hover:border-brand hover:text-brand disabled:opacity-40"
+              >
+                {form.scheduledAt ? "Schedule" : "Save draft"}
+              </button>
+              <button
+                onClick={() => save(true)}
+                disabled={busy || !form.title || !form.excerpt || !form.content}
+                className="rounded bg-brand px-5 py-2 text-sm font-bold text-white hover:bg-brand-dark disabled:opacity-40"
+              >
+                {busy ? "Saving…" : "Publish now"}
+              </button>
+            </>
+          )}
         </div>
       </div>
       {error && <p className="mt-2 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
     </div>
+  );
+}
+
+function FormatBtn({ label, title, onClick }: { label: string; title: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      className="rounded px-1.5 py-0.5 text-xs font-bold text-slate-600 hover:bg-slate-200 hover:text-brand"
+      dangerouslySetInnerHTML={{ __html: label }}
+    />
   );
 }

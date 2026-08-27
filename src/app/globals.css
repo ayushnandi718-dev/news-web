@@ -2,18 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  overflow-x: clip;
+}
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-paper text-ink antialiased;
+  overflow-x: clip;
   font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    "Noto Sans",
+    var(--font-bengali, "IBM Plex Sans Bengali"),
+    "IBM Plex Sans Bengali",
     "Noto Sans Bengali",
     "Hind Siliguri",
+    ui-sans-serif,
+    system-ui,
+    "Segoe UI",
+    Roboto,
     Arial,
     sans-serif;
 }
@@ -26,3 +29,180 @@ body {
 .section-title {
   @apply mb-3 flex items-center gap-2 text-[13px] font-bold uppercase tracking-wider text-slate-500;
 }
+
+/* Bengali editorial article body */
+.article-body {
+  font-size: 1.0625rem;
+  line-height: 1.95;
+  word-spacing: 0.02em;
+  overflow-wrap: break-word;
+}
+.article-body p + p {
+  margin-top: 1.15em;
+}
+/* Embedded media inside articles must never blow out mobile width */
+.article-body img,
+.article-body video,
+.article-body iframe {
+  max-width: 100%;
+  height: auto;
+}
+.article-body table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.article-body pre {
+  overflow-x: auto;
+}
+
+/* Safe-area helper for fixed bottom bars (iOS notch) */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Drawer slide-in */
+@keyframes drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-drawer {
+  animation: drawer-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.animate-fade {
+  animation: fade-in 0.18s ease-out both;
+}
+
+/* Live notification slide-down */
+@keyframes slide-down {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.animate-slideDown {
+  animation: slide-down 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Thin editorial scrollbar for nav strips */
+.nav-strip {
+  scrollbar-width: none;
+}
+.nav-strip::-webkit-scrollbar {
+  display: none;
+}
+
+/* Prevent iOS Safari auto-zoom when focusing small inputs on phones */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* ===== UI overlay animations (toasts / confirm dialogs) ===== */
+@keyframes ui-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ui-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ui-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-ui-toast {
+  animation: ui-toast-in 0.22s cubic-bezier(0.21, 1.02, 0.73, 1) both;
+}
+.animate-ui-overlay {
+  animation: ui-overlay-in 0.15s ease-out both;
+}
+.animate-ui-pop {
+  animation: ui-pop-in 0.18s cubic-bezier(0.21, 1.02, 0.73, 1) both;
+}
+
+/* Ad description rich text (admin editor + public preview) */
+.rich-editor:empty:before {
+  content: attr(data-placeholder);
+  color: #94a3b8;
+}
+.ad-rich p { margin: 0 0 0.6em; }
+.ad-rich h3 { font-size: 1.05em; font-weight: 800; margin: 0.8em 0 0.4em; }
+.ad-rich h4 { font-size: 1em; font-weight: 700; margin: 0.6em 0 0.3em; }
+.ad-rich ul, .ad-rich ol { margin: 0 0 0.6em 1.4em; }
+.ad-rich ul { list-style: disc; }
+.ad-rich ol { list-style: decimal; }
+.ad-rich a { color: #b91c1c; text-decoration: underline; }
+
+/* Dark mode */
+.dark body,
+.dark { color-scheme: dark; }
+.dark .bg-paper { background-color: #0f172a !important; }
+.dark .bg-white { background-color: #1e293b !important; }
+.dark .text-ink { color: #e2e8f0 !important; }
+.dark .text-brand-ink { color: #f1f5f9 !important; }
+.dark .text-slate-400 { color: #94a3b8 !important; }
+.dark .text-slate-500 { color: #cbd5e1 !important; }
+.dark .text-slate-600 { color: #cbd5e1 !important; }
+.dark .text-slate-700, .dark .text-slate-800 { color: #e2e8f0 !important; }
+.dark .border-slate-200 { border-color: #334155 !important; }
+.dark .border-slate-300 { border-color: #475569 !important; }
+.dark .hover\:bg-slate-100:hover { background-color: #1e293b !important; }
+.dark .hover\:bg-slate-50:hover { background-color: #1e293b !important; }
+.dark .bg-slate-50 { background-color: #1e293b !important; }
+.dark .bg-slate-100 { background-color: #1e293b !important; }
+.dark .bg-slate-100\/60 { background-color: rgba(15,23,42,0.6) !important; }
+.dark .bg-\[\#eeebe1\] { background-color: #1a2332 !important; }
+.dark .bg-\[\#faf9f5\] { background-color: #1a2332 !important; }
+.dark .article-body { color: #cbd5e1; }
+.dark header { background-color: rgba(15, 23, 42, 0.95) !important; }
+.dark footer { background-color: #0f172a !important; }
+.dark .sticky { background-color: rgba(15, 23, 42, 0.95) !important; }
+.dark .bg-brand { background-color: #b91c1c !important; }
+.dark .hover\:bg-brand-dark:hover { background-color: #991b1b !important; }
+.dark .border-brand { border-color: #dc2626 !important; }
+.dark .placeholder\:text-slate-400::placeholder { color: #64748b !important; }
+.dark input[type="search"] { background-color: #1e293b !important; color: #e2e8f0 !important; }
+.dark select { background-color: #1e293b !important; color: #e2e8f0 !important; }
+
+/* Font size control */
+.article-body { font-size: var(--dk-font-size, 1.0625rem); }
+
+/* Google Translate — hide banner frame and skip translate iframe */
+.goog-te-banner-frame,
+.goog-te-banner-framebody { display: none !important; }
+body { top: 0 !important; }
+.skiptranslate { display: none !important; }
+.goog-te-spinner-pos { display: none !important; }
+.goog-text-highlight { background: none !important; box-shadow: none !important; }
+#google_translate_element { display: none !important; }

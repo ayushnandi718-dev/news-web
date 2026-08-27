@@ -47,7 +47,7 @@ export default function LiveFeed({
         status: "PUBLISHED",
         publishedAt: e.publishedAt,
         updatedAt: e.publishedAt,
-        freshness: { key: "JUST_IN", label: "Just In", ageMinutes: 0, ageLabel: "just now" },
+        freshness: { key: "JUST_IN", label: "এইমাত্র", ageMinutes: 0, ageLabel: "এইমাত্র" },
         isBreaking: e.isBreaking,
         breakingActive: e.isBreaking,
         breakingUntil: null,
@@ -89,15 +89,15 @@ export default function LiveFeed({
 
   return (
     <div>
-      <div className="sticky top-0 z-10 -mx-1 mb-2 px-1">
+      <div className="-mt-1 mb-2">
         {pending.length > 0 && (
           <button
             onClick={showPending}
             className="mx-auto flex items-center gap-3 rounded-full bg-brand px-4 py-1.5 text-sm font-semibold text-white shadow-lg transition hover:bg-brand-dark"
           >
             <span className={`h-2 w-2 rounded-full bg-white ${connected ? "animate-pulseDot" : ""}`} />
-            {pending.length} new {pending.length === 1 ? "story" : "stories"} available
-            <span className="underline">View latest</span>
+            {pending.length} টি নতুন খবর এসেছে
+            <span className="underline">সর্বশেষ দেখুন</span>
           </button>
         )}
       </div>
@@ -109,7 +109,7 @@ export default function LiveFeed({
       </div>
 
       {items.length === 0 && (
-        <p className="py-8 text-center text-sm text-slate-500">No fresh stories right now. Check the archive for older coverage.</p>
+        <p className="py-8 text-center text-sm text-slate-500">এই মুহূর্তে নতুন কোনও খবর নেই। পুরোনো খবরের জন্য আর্কাইভ দেখুন।</p>
       )}
 
       {cursor && (
@@ -119,7 +119,7 @@ export default function LiveFeed({
             disabled={loading}
             className="rounded border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-700 hover:border-brand hover:text-brand disabled:opacity-50"
           >
-            {loading ? "Loading…" : "Load more"}
+            {loading ? "লোড হচ্ছে…" : "আরও দেখুন"}
           </button>
         </div>
       )}

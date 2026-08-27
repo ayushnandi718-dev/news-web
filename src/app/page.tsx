@@ -1,223 +1,225 @@
 import Link from "next/link";
-import { getBreaking, getCategorySections, getFeatured, getLatest, getRegionSections, getTrending } from "@/lib/feeds";
-import { ArticleCard } from "@/components/ArticleCard";
-import BreakingTicker from "@/components/BreakingTicker";
-import LiveFeed from "@/components/LiveFeed";
+import { unstable_cache } from "next/cache";
+import { getCategorySections, getLatest, getTrending } from "@/lib/feeds";
+import NewsCard from "@/components/NewsCard";
+import SectionHeader from "@/components/SectionHeader";
+import TrendingList from "@/components/TrendingList";
 import MarketWatch from "@/components/MarketWatch";
 import Newsletter from "@/components/Newsletter";
 import WeatherCard from "@/components/WeatherCard";
+import LiveLatest from "@/components/LiveLatest";
+import AdSlot from "@/components/AdSlot";
+import { AdBannerTop, AdInArticle, AdSidebar } from "@/components/GoogleAdSense";
+import { HOME_SECTION_SLUGS, bnLabel, BRAND, siteUrl, brandLogoUrl } from "@/lib/brand";
+import { generateWebSiteSchema } from "@/lib/seo";
+import { db } from "@/lib/db";
+import { PLATFORM_LABELS, type LivePlatform } from "@/lib/live";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
-const LOCAL_REGION_SLUGS = (process.env.HOME_REGION_SECTIONS ?? "alipurduar-region,north-bengal")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
-
-function SectionHeading({ title, href, label }: { title: string; href?: string; label?: string }) {
-  return (
-    <div className="mb-3 flex items-center justify-between border-b-2 border-brand-ink/90 pb-1.5">
-      <h2 className="text-[15px] font-black uppercase tracking-wide text-brand-ink">{title}</h2>
-      {href && (
-        <Link href={href} className="text-xs font-bold text-brand hover:underline">
-          {label ?? "View all"} →
-        </Link>
-      )}
-    </div>
-  );
-}
+const getActiveLiveStreams = unstable_cache(
+  async () => db.liveStream.findMany({
+    where: { isActive: true },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+    take: 3,
+    select: { id: true, title: true, url: true, bannerUrl: true, platform: true },
+  }),
+  ["home:live-streams"],
+  { revalidate: 10, tags: ["live-streams"] }
+);
 
 export default async function HomePage() {
-  const [breaking, latest, featured, trending, sections, localSections] = await Promise.all([
-    getBreaking(),
-    getLatest({ limit: 12 }),
-    getFeatured(4),
+  const [latest, trending, categorySections, liveStreams] = await Promise.all([
+    getLatest({ limit: 26 }),
     getTrending({ limit: 6 }),
-    getCategorySections(5),
-    getRegionSections(LOCAL_REGION_SLUGS, 5),
+    getCategorySections(6),
+    getActiveLiveStreams(),
   ]);
+  const live = liveStreams[0];
 
   const items = latest.items;
   const hero = items[0];
-  const secondary = items.slice(1, 3);
-  const feedItems = items.slice(3);
+  const secondary = items.slice(1, 4);
+  const strip = items.slice(4, 8);
+  const latestGrid = items.slice(8, 20);
+
+  const sectionMap = new Map(categorySections.map((s) => [s.slug, s]));
+  const orderedSections = HOME_SECTION_SLUGS.map((slug) => sectionMap.get(slug)).filter(
+    (s): s is NonNullable<typeof s> => Boolean(s)
+  );
+
+  const base = siteUrl();
+  const websiteSchema = generateWebSiteSchema(base, BRAND.bn);
+  const orgSchema = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "NewsMediaOrganization",
+    name: BRAND.bn,
+    alternateName: BRAND.en,
+    slogan: BRAND.tagline,
+    url: base,
+    logo: brandLogoUrl(),
+    areaServed: [
+      { "@type": "City", name: "Alipurduar" },
+      { "@type": "AdministrativeArea", name: "Dooars" },
+      { "@type": "AdministrativeArea", name: "North Bengal" },
+      { "@type": "State", name: "West Bengal" },
+      { "@type": "Country", name: "India" },
+    ],
+  });
 
   return (
-    <main className="mx-auto max-w-[1280px] px-4 py-5">
-      <BreakingTicker initial={breaking} />
+    <main className="mx-auto max-w-[1280px] px-4 py-4">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: websiteSchema }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: orgSchema }}
+      />
+      {/* ===== AD: HOME TOP ===== */}
+      <AdSlot placement="HOME_TOP" />
 
-      {/* Hero band */}
-      <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_320px]">
-        <section aria-label="Top story" className="min-w-0">
-          {hero ? (
-            <div className="grid gap-6 md:grid-cols-[1fr_240px]">
-              {/* Main hero */}
-              <article className="group min-w-0">
-                <Link href={hero.url} className="block overflow-hidden rounded-xl bg-slate-100">
-                  {hero.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={hero.image}
-                      alt=""
-                      className="aspect-[16/9] w-full object-cover transition duration-200 group-hover:scale-[1.015]"
-                      fetchPriority="high"
-                    />
-                  ) : (
-                    <span className="flex aspect-[16/9] w-full items-center justify-center bg-gradient-to-br from-slate-200 to-slate-300">
-                      <span className="text-3xl font-black tracking-tight text-white/80">NewsWeb</span>
-                    </span>
-                  )}
-                </Link>
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-                  {hero.isBreaking && (
-                    <span className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Breaking</span>
-                  )}
-                  {hero.category && (
-                    <Link href={`/category/${hero.category.slug}`} className="text-[11px] font-bold uppercase tracking-wide text-brand hover:underline">
-                      {hero.category.name}
-                    </Link>
-                  )}
-                  {hero.region && (
-                    <Link href="/news" className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 hover:bg-slate-200">
-                      {hero.region.name}
-                    </Link>
-                  )}
+      {/* ===== LIVE NOW STRIP ===== */}
+      {live && (
+        <section aria-label="এখন লাইভ" className="mb-5">
+          <div className="flex items-stretch overflow-hidden rounded-xl border border-red-200 bg-white shadow-sm transition hover:border-red-400 hover:shadow-md">
+            <a
+              href={live.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex min-w-0 flex-1 items-stretch"
+            >
+            <div className="relative hidden w-44 shrink-0 bg-gradient-to-br from-slate-800 via-brand-dark to-slate-900 sm:block">
+              {live.bannerUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={live.bannerUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-white/80">
+                  <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="m22 8-6 4 6 4V8Z" /><rect x="2" y="6" width="14" height="12" rx="2" />
+                  </svg>
                 </div>
-                <h2 className="mt-1.5 font-black leading-tight tracking-tight text-brand-ink [font-size:clamp(1.7rem,3vw,2.6rem)] [line-height:1.15]">
-                  <Link href={hero.url} className="hover:text-brand">
-                    {hero.title}
-                  </Link>
-                </h2>
-                {hero.excerpt && <p className="mt-2 line-clamp-3 max-w-2xl text-[15px] leading-relaxed text-slate-600">{hero.excerpt}</p>}
-                <p className="mt-2 text-xs text-slate-500">
-                  {hero.authorName && <span>{hero.authorName} · </span>}
-                  <time dateTime={hero.publishedAt ?? undefined}>{new Date(hero.publishedAt ?? Date.now()).toLocaleString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true, day: "numeric", month: "short" })}</time>
-                </p>
+              )}
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 px-4 py-3">
+              <p className="flex items-center gap-2">
+                <span className="flex items-center gap-1.5 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white">
+                  <span className="h-1.5 w-1.5 animate-pulseDot rounded-full bg-white" aria-hidden="true" />
+                  এখন লাইভ
+                </span>
+                <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                  {PLATFORM_LABELS[live.platform as LivePlatform] ?? PLATFORM_LABELS.OTHER}
+                </span>
+              </p>
+              <p className="truncate font-bold leading-snug text-brand-ink group-hover:text-brand">{live.title}</p>
+              <p className="text-xs font-semibold text-slate-500 group-hover:text-slate-700">
+                দেখুন → {PLATFORM_LABELS[live.platform as LivePlatform] ?? PLATFORM_LABELS.OTHER}-এ খুলবে
+              </p>
+            </div>
+            </a>
+            {liveStreams.length > 1 && (
+              <Link
+                href="/live"
+                className="flex shrink-0 items-center border-l border-slate-100 px-3 text-xs font-bold text-brand hover:bg-brand/5"
+              >
+                +{liveStreams.length - 1} আরও
+              </Link>
+            )}
+          </div>
+        </section>
+      )}
 
-                {/* Secondary stories beside hero on md+ */}
-                <ul className="mt-4 hidden divide-y divide-slate-100 border-t border-slate-100 md:block">
-                  {secondary.map((a) => (
-                    <li key={a.id}>
-                      <ArticleCard a={a} variant="compact" />
-                    </li>
-                  ))}
-                </ul>
-              </article>
-
-              {/* Mobile secondary stack */}
-              <div className="space-y-5 md:hidden">
+      {/* ===== HERO BAND ===== */}
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <section aria-label="প্রধান সংবাদ" className="min-w-0">
+          {hero ? (
+            <div className="grid gap-5 md:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+              <NewsCard a={hero} variant="hero" />
+              <div className="border-t border-slate-200/80 md:border-t-0">
                 {secondary.map((a) => (
-                  <ArticleCard key={a.id} a={a} />
+                  <NewsCard key={a.id} a={a} variant="compact" />
                 ))}
               </div>
             </div>
           ) : (
-            <div className="flex aspect-[16/9] max-h-72 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white">
-              <p className="text-sm text-slate-400">No fresh stories right now — check the archive.</p>
+            <div className="flex aspect-[16/9] max-h-72 items-center justify-center border border-dashed border-slate-300 bg-white">
+              <p className="text-sm text-slate-400">এই মুহূর্তে নতুন সংবাদ নেই — আর্কাইভ দেখুন।</p>
             </div>
           )}
         </section>
 
-        {/* Right rail: weather + market + top stories */}
-        <div className="space-y-6">
+        <aside aria-label="আবহাওয়া ও মার্কেট" className="space-y-4">
           <WeatherCard />
           <MarketWatch />
-
-          {featured.length > 0 && (
-            <section aria-label="Top stories" className="hidden lg:block">
-              <SectionHeading title="Top Stories" />
-              <div className="divide-y divide-slate-100">
-                {featured.map((a) => (
-                  <ArticleCard key={a.id} a={a} variant="compact" />
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-      </div>
-
-      {/* Latest + Trending band */}
-      <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_320px]">
-        <section aria-label="Latest news" className="min-w-0">
-          <SectionHeading title="Latest News" href="/news" />
-          <LiveFeed initialItems={feedItems.length ? feedItems : items.slice(1)} initialCursor={latest.next_cursor} />
-        </section>
-
-        <aside aria-label="Trending now">
-          <SectionHeading title="Trending Now" href="/trending" />
-          <ol className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            {trending.items.map((a, i) => (
-              <li key={a.id} className="flex gap-3 px-4 py-2.5 transition hover:bg-slate-50">
-                <span className="w-6 shrink-0 text-lg font-black leading-none tabular-nims text-slate-200">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <div className="min-w-0">
-                  <h3 className="truncate text-sm font-semibold leading-snug text-brand-ink">
-                    <Link href={a.url} className="hover:text-brand">
-                      {a.title}
-                    </Link>
-                  </h3>
-                  <p className="mt-0.5 text-[11px] text-slate-500">
-                    {a.category?.name} · {a.views.toLocaleString("en-IN")} views
-                  </p>
-                </div>
-              </li>
-            ))}
-            {trending.items.length === 0 && (
-              <li className="px-4 py-4 text-sm text-slate-500">Nothing trending yet.</li>
-            )}
-          </ol>
         </aside>
       </div>
 
-      {/* Local-first sections */}
-      {localSections.length > 0 && (
-        <div className={`mt-10 grid gap-8 ${localSections.length > 1 ? "lg:grid-cols-2" : ""}`}>
-          {localSections.map((s) => {
-            const [lead, ...rest] = s.items;
-            return (
-              <section key={s.slug} aria-label={`${s.name} news`}>
-                <SectionHeading title={s.name.toUpperCase()} href="/news" label="More local" />
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <ArticleCard a={lead} />
-                  <ul className="space-y-3">
-                    {rest.slice(0, 3).map((a) => (
-                      <li key={a.id}>
-                        <ArticleCard a={a} variant="compact" />
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </section>
-            );
-          })}
+      {/* ===== STORY STRIP (below hero) ===== */}
+      <AdBannerTop />
+      {strip.length > 0 && (
+        <div className="mt-5 grid gap-x-6 border-y border-slate-200/80 py-1 sm:grid-cols-2 lg:grid-cols-4">
+          {strip.map((a) => (
+            <NewsCard key={a.id} a={a} variant="text" />
+          ))}
         </div>
       )}
 
-      {/* Category sections */}
+      {/* ===== LATEST + TRENDING ===== */}
+      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <LiveLatest initial={latestGrid} />
+
+        <aside aria-label="ট্রেন্ডিং" className="space-y-4">
+          <SectionHeader title="এই মুহূর্তে ট্রেন্ডিং" href="/trending" />
+          <TrendingList items={trending.items} max={5} />
+          <AdSlot placement="HOME_SIDEBAR" />
+          <AdSidebar />
+          {featuredLinkStrip()}
+        </aside>
+      </div>
+
+      {/* ===== CATEGORY SECTIONS (Alipurduar-first order) ===== */}
+      <AdInArticle />
       <div className="mt-10 space-y-10">
-        {sections.map((s) => {
+        {orderedSections.map((s) => {
           const [lead, ...rest] = s.items;
           if (!lead) return null;
           return (
-            <section key={s.slug} aria-label={`${s.name} news`}>
-              <SectionHeading title={s.name.toUpperCase()} href={`/category/${s.slug}`} />
-              <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-                <ArticleCard a={lead} />
-                <ul className="grid content-start gap-x-6 sm:grid-cols-2">
+            <section key={s.slug} aria-label={`${bnLabel(s.slug, s.name)} সংবাদ`} className="scroll-mt-32">
+              <SectionHeader title={bnLabel(s.slug, s.name)} href={`/category/${s.slug}`} />
+              <div className="grid gap-5 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+                <NewsCard a={lead} variant="lead" />
+                <div className="grid content-start gap-x-6 sm:grid-cols-2 md:grid-cols-1 xl:grid-cols-2">
                   {rest.slice(0, 4).map((a) => (
-                    <li key={a.id} className="border-b border-slate-100 sm:border-b sm:last:border-0">
-                      <ArticleCard a={a} variant="compact" />
-                    </li>
+                    <NewsCard key={a.id} a={a} variant="compact" />
                   ))}
-                </ul>
+                </div>
               </div>
             </section>
           );
         })}
       </div>
 
+      <div className="mt-12 border-t border-slate-200/80 pt-6">
+        <p className="mb-4 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+          আলিপুরদুয়ার → ডুয়ার্স → উত্তরবঙ্গ → পশ্চিমবঙ্গ → ভারত → বিশ্ব
+        </p>
+      </div>
+
       <Newsletter />
     </main>
+  );
+}
+
+function featuredLinkStrip() {
+  return (
+    <div className="border border-slate-200/80 bg-white p-3">
+      <p className="text-[11px] leading-relaxed text-slate-500">
+        আপনার এলাকার প্রতিটি খবর এখন বাংলায়।{" "}
+        <Link href="/archive" className="font-bold text-brand hover:underline">
+          পুরোনো খবরাও পড়ুন →
+        </Link>
+      </p>
+    </div>
   );
 }

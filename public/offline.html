@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>অফলাইন — দুয়ারসের খবর</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, "Noto Sans Bengali", sans-serif;
+      background: #faf9f5;
+      color: #1e293b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .card {
+      max-width: 400px;
+      text-align: center;
+    }
+    .icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      background: #c8102e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+      font-size: 1.25rem;
+      font-weight: 900;
+      color: #fff;
+    }
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+    }
+    p {
+      font-size: 0.875rem;
+      color: #64748b;
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+    .retry-btn {
+      display: inline-block;
+      background: #c8102e;
+      color: #fff;
+      border: none;
+      border-radius: 0.75rem;
+      padding: 0.75rem 2rem;
+      font-size: 0.875rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .retry-btn:hover { background: #a50c24; }
+    .tip {
+      margin-top: 1.5rem;
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">DK</div>
+    <h1>ইন্টারনেট সংযোগ নেই</h1>
+    <p>
+      আপনার ডিভাইসে এখন ইন্টারনেট সংযোগ নেই।
+      অনুগ্রহ করে সংযোগ পুনরুদ্ধার করে আবার চেষ্টা করুন।
+    </p>
+    <button class="retry-btn" onclick="window.location.reload()">
+      আবার চেষ্টা করুন
+    </button>
+    <p class="tip">
+      💡 টিপ: Wi-Fi বা মোবাইল ডেটা চালু করুন এবং পৃষ্ঠাটি রিফ্রেশ করুন।
+    </p>
+  </div>
+</body>
+</html>

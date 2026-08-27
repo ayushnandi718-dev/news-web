@@ -1,5 +1,7 @@
 import { XMLParser } from "fast-xml-parser";
 import { hashId } from "../text";
+import { NEWSAPI_BASE, newsApiKey } from "../config";
+import { logApiAlert, updateApiHealth } from "../monitoring";
 
 export interface NormalizedItem {
   externalId: string;
@@ -63,6 +65,100 @@ export async function fetchSource(
     if (attempt <= retries) await new Promise((r) => setTimeout(r, 1000 * attempt * attempt));
   }
   return { status: "ERROR", error: lastError };
+}
+
+export interface NewsApiResult {
+  status: "OK" | "ERROR";
+  items: NormalizedItem[];
+  error?: string;
+}
+
+/**
+ * Fetches a NewsAPI.org endpoint (path + query, e.g.
+ * "top-headlines?category=technology&country=in&pageSize=25") and normalizes
+ * articles into the shared ingest shape. Auth via x-api-key header.
+ */
+export async function fetchNewsApi(
+  pathAndQuery: string,
+  timeoutMs: number,
+  retries: number
+): Promise<NewsApiResult> {
+  const key = newsApiKey();
+  if (!key) {
+    logApiAlert("newsapi", "critical", "NEWS_API_KEY is not configured — English desk sources cannot fetch");
+    updateApiHealth("newsapi", false);
+    return { status: "ERROR", items: [], error: "missing_api_key" };
+  }
+  const url = `${NEWSAPI_BASE}/${pathAndQuery.replace(/^\/+/, "")}`;
+  let attempt = 0;
+  let lastError = "unknown";
+  while (attempt <= retries) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, {
+        headers: { "x-api-key": key, "user-agent": "NewsWebBot/1.0 (+newsroom ingest)" },
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (res.status === 429) {
+        updateApiHealth("newsapi", false);
+        logApiAlert("newsapi", "error", "Rate limited by NewsAPI — free tier allows ~100 req/day");
+        return { status: "ERROR", items: [], error: "rate_limited" };
+      }
+      if (!res.ok) {
+        lastError = `http_${res.status}`;
+      } else {
+        const json = (await res.json()) as {
+          status?: string;
+          message?: string;
+          articles?: Array<{
+            title?: string;
+            description?: string | null;
+            content?: string | null;
+            url?: string;
+            urlToImage?: string | null;
+            publishedAt?: string;
+          }>;
+        };
+        if (json.status !== "ok") {
+          updateApiHealth("newsapi", false);
+          logApiAlert("newsapi", "error", `NewsAPI returned error: ${json.message ?? "api_error"}`);
+          return { status: "ERROR", items: [], error: json.message ?? "api_error" };
+        }
+        const items: NormalizedItem[] = [];
+        for (const a of json.articles ?? []) {
+          const title = stripHtml(a.title ?? "").trim();
+          const link = a.url?.trim() ?? "";
+          if (!title || !/^https?:\/\//i.test(link)) continue;
+          // NewsAPI truncates content with "[+1234 chars]" — drop the marker
+          const content = (a.content ?? "").replace(/\[\+\d+\s*chars?\]$/i, "");
+          items.push({
+            externalId: hashId(link),
+            title,
+            url: link,
+            canonicalUrl: link,
+            summary: stripHtml(a.description ?? "").slice(0, 500) || undefined,
+            contentText: stripHtml(content).slice(0, 8000) || undefined,
+            imageUrl: a.urlToImage || undefined,
+            sourcePublishedAt: a.publishedAt && !isNaN(new Date(a.publishedAt).getTime())
+              ? new Date(a.publishedAt)
+              : undefined,
+          });
+        }
+        updateApiHealth("newsapi", true);
+        return { status: "OK", items };
+      }
+    } catch (err) {
+      clearTimeout(timer);
+      lastError = err instanceof Error ? (err.name === "AbortError" ? "timeout" : err.message) : "network_error";
+    }
+    attempt++;
+    if (attempt <= retries) await new Promise((r) => setTimeout(r, 1000 * attempt * attempt));
+  }
+  updateApiHealth("newsapi", false);
+  logApiAlert("newsapi", "error", `NewsAPI fetch failed after retries: ${lastError}`);
+  return { status: "ERROR", items: [], error: lastError };
 }
 
 const parser = new XMLParser({

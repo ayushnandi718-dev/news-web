@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
+import { decodeSlug } from "@/lib/text";
 import { PUBLIC_VISIBLE_STATUSES } from "@/lib/config";
 import { handleError, ok } from "@/lib/api";
 
@@ -9,11 +10,11 @@ const ALLOWED = new Set(["twitter", "facebook", "whatsapp", "copy", "native"]);
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   try {
-    const { slug } = await ctx.params;
+    const { slug: rawSlug } = await ctx.params;
     const body = (await req.json().catch(() => ({}))) as { channel?: string };
     const channel = body.channel && ALLOWED.has(body.channel) ? body.channel : "native";
     const article = await db.article.findUnique({
-      where: { slug },
+      where: { slug: decodeSlug(rawSlug) },
       select: { id: true, status: true },
     });
     if (!article || !PUBLIC_VISIBLE_STATUSES.includes(article.status as never)) {

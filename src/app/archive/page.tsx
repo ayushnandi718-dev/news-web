@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { unstable_cache } from "next/cache";
 import { getArchive } from "@/lib/feeds";
 import { db } from "@/lib/db";
 import { ArticleCard } from "@/components/ArticleCard";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "News Archive",
@@ -16,6 +17,12 @@ export default async function ArchivePage({
 }: {
   searchParams: Promise<{ category?: string; year?: string; month?: string; q?: string; cursor?: string }>;
 }) {
+  const getAllCategories = unstable_cache(
+    () => db.category.findMany({ orderBy: { name: "asc" }, select: { slug: true, name: true } }),
+    ["archive:categories"],
+    { revalidate: 600, tags: ["categories"] }
+  );
+
   const sp = await searchParams;
   const [archive, categories] = await Promise.all([
     getArchive({
@@ -26,7 +33,7 @@ export default async function ArchivePage({
       cursor: sp.cursor,
       limit: 20,
     }),
-    db.category.findMany({ orderBy: { name: "asc" }, select: { slug: true, name: true } }),
+    getAllCategories(),
   ]);
 
   const qs = (over: Record<string, string | undefined>) => {
