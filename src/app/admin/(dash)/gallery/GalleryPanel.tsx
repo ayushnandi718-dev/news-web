@@ -98,9 +98,9 @@ export default function AdminGallery() {
       formData.append("file", file);
       const uploadRes = await fetch("/api/v1/admin/media", { method: "POST", body: formData });
       const uploadJson = await uploadRes.json();
-      if (!uploadJson.ok) return;
+      if (!uploadJson.ok) throw new Error(uploadJson.error || "Upload failed");
       const url = uploadJson.data.media?.url;
-      if (!url) return;
+      if (!url) throw new Error("No URL returned from upload");
       const thumbUrl = url.replace(/(\.\w+)$/, "_thumb.webp");
       const imgRes = await fetch(`/api/v1/admin/galleries/${galleryId}/images`, {
         method: "POST",
@@ -108,8 +108,10 @@ export default function AdminGallery() {
         body: JSON.stringify({ url, thumbUrl, alt: file.name.replace(/\.\w+$/, ""), mime: file.type, size: file.size }),
       });
       const imgJson = await imgRes.json();
-      if (!imgJson.ok) return;
+      if (!imgJson.ok) throw new Error(imgJson.error || "Failed to add image to gallery");
       load();
+    } catch (err) {
+      console.error("[gallery] upload error:", err);
     } finally {
       setUploading(false);
     }
@@ -365,14 +367,14 @@ function GalleryEditor({
     setDropTarget(null);
   }
 
-  function onFileDrop(e: React.DragEvent) {
+  async function onFileDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragOver(false);
     const files = e.dataTransfer.files;
     if (files.length && galleryId) {
-      Array.from(files).forEach((f) => {
-        if (f.type.startsWith("image/")) uploadAndRefresh(galleryId, f);
-      });
+      for (const f of Array.from(files)) {
+        if (f.type.startsWith("image/")) await uploadAndRefresh(galleryId, f);
+      }
     }
   }
 
@@ -466,7 +468,7 @@ function GalleryEditor({
             <label className="mt-2 cursor-pointer rounded bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-200">
               Browse files
               <input type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/gif" multiple className="hidden"
-                onChange={(e) => { const files = e.target.files; if (files) Array.from(files).forEach((f) => uploadAndRefresh(galleryId, f)); e.target.value = ""; }} />
+                onChange={async (e) => { const files = e.target.files; if (files) { for (const f of Array.from(files)) await uploadAndRefresh(galleryId, f); } e.target.value = ""; }} />
             </label>
           </div>
         </div>

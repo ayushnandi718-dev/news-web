@@ -55,13 +55,13 @@ async function optimizeImage(buffer: Buffer, mime: string): Promise<Buffer> {
   }
 }
 
-async function generateThumbnail(buffer: Buffer, mime: string): Promise<Buffer> {
+async function generateThumbnail(buffer: Buffer, mime: string): Promise<Buffer | null> {
   if (mime === "image/gif") return buffer;
   try {
     const img = sharp(buffer).resize({ width: THUMB_WIDTH, withoutEnlargement: true });
-    return img.webp({ quality: 75 }).toBuffer();
+    return await img.webp({ quality: 75 }).toBuffer();
   } catch {
-    return Buffer.alloc(0); // empty buffer signals failure to caller
+    return null;
   }
 }
 
@@ -95,7 +95,7 @@ export async function saveUpload(buffer: Buffer, mime: string): Promise<{ url: s
 
   // Generate thumbnail alongside (non-blocking)
   generateThumbnail(buffer, mime)
-    .then((thumb) => writeFile(path.join(dir, `${base}_thumb.webp`), thumb))
+    .then((thumb) => { if (thumb && thumb.length > 0) return writeFile(path.join(dir, `${base}_thumb.webp`), thumb); })
     .catch(() => {});
 
   return { url: `/uploads/${yyyy}/${mm}/${name}`, filePath };

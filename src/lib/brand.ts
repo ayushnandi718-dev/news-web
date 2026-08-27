@@ -113,6 +113,7 @@ export const NAV_OTHER: Array<{ href: string; label: string }> = [
   { href: "/trending", label: "ট্রেন্ডিং" },
   { href: "/gallery", label: "ফটো গ্যালারি" },
   { href: "/polls", label: "পোল ও সার্ভে" },
+  { href: "/advertisements", label: "বিজ্ঞাপনসমূহ" },
   { href: "/obituary", label: "শোক সংবাদ" },
   { href: "/tip", label: "সংবাদ টিপ" },
   { href: "/advertise", label: "বিজ্ঞাপন দিন" },
