@@ -55,6 +55,8 @@ const BN_LABELS: Record<string, string> = {
   football: "ফুটবল",
   obituary: "শোক সংবাদ",
   tip: "সংবাদ টিপ",
+  gallery: "ফটো গ্যালারি",
+  polls: "পোল ও সার্ভে",
 };
 
 export function bnLabel(slug: string | null | undefined, fallback?: string): string {
@@ -109,6 +111,8 @@ export const NAV_OTHER: Array<{ href: string; label: string }> = [
   { href: "/weather", label: "আবহাওয়া" },
   { href: "/market", label: "মার্কেট আপডেট" },
   { href: "/trending", label: "ট্রেন্ডিং" },
+  { href: "/gallery", label: "ফটো গ্যালারি" },
+  { href: "/polls", label: "পোল ও সার্ভে" },
   { href: "/obituary", label: "শোক সংবাদ" },
   { href: "/tip", label: "সংবাদ টিপ" },
   { href: "/advertise", label: "বিজ্ঞাপন দিন" },

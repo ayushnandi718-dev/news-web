@@ -222,3 +222,19 @@ export const IconHealth = (p: P) => (
     <circle cx="12" cy="12" r="10" stroke-width="1.2" />
   </Base>
 );
+
+export const IconGallery = (p: P) => (
+  <Base {...p}>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M3 15l4-4a2 2 0 0 1 2.82 0L15 16" />
+    <path d="M14 14l1-1a2 2 0 0 1 2.82 0L21 16" />
+    <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
+  </Base>
+);
+
+export const IconPoll = (p: P) => (
+  <Base {...p}>
+    <path d="M3 3v18h18" />
+    <path d="M7 16V8M12 16V4M17 16v-6" />
+  </Base>
+);

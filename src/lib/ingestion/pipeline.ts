@@ -67,30 +67,41 @@ async function autoPublishItem(
   const baseSlug = slugify(item.title) || `story-${Date.now()}`;
   let slug = baseSlug;
   let n = 1;
-  while (await db.article.findUnique({ where: { slug } })) slug = `${baseSlug.slice(0, 80)}-${n++}`;
 
-  const article = await db.article.create({
-    data: {
-      title: item.title,
-      slug,
-      excerpt: (item.summary ?? item.title).slice(0, 500),
-      content: contentText,
-      featuredImage: item.imageUrl ?? null,
-      categoryId: cat.id,
-      authorId,
-      status: "PUBLISHED",
-      publishedAt: new Date(),
-      sourceName: source.name,
-      sourceUrl: item.url,
-      canonicalUrl: item.canonicalUrl ?? item.url,
-      sourceId: source.id,
-    },
-  });
-  await db.importedItem.update({
-    where: { id: itemId },
-    data: { status: "CONVERTED_DRAFT", draftArticleId: article.id },
-  });
-  return true;
+  for (let attempt = 0; attempt < 10; attempt++) {
+    try {
+      const article = await db.article.create({
+        data: {
+          title: item.title,
+          slug,
+          excerpt: (item.summary ?? item.title).slice(0, 500),
+          content: contentText,
+          featuredImage: item.imageUrl ?? null,
+          categoryId: cat.id,
+          authorId,
+          status: "PUBLISHED",
+          publishedAt: new Date(),
+          sourceName: source.name,
+          sourceUrl: item.url,
+          canonicalUrl: item.canonicalUrl ?? item.url,
+          sourceId: source.id,
+        },
+      });
+      await db.importedItem.update({
+        where: { id: itemId },
+        data: { status: "CONVERTED_DRAFT", draftArticleId: article.id },
+      });
+      return true;
+    } catch (e: unknown) {
+      if (e && typeof e === "object" && "code" in e && (e as { code: string }).code === "P2002") {
+        n++;
+        slug = `${baseSlug.slice(0, 80)}-${n}`;
+        continue;
+      }
+      throw e;
+    }
+  }
+  return false;
 }
 
 /** Dedupe-checks and stages normalized items into ImportedItem. */

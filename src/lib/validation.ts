@@ -295,3 +295,48 @@ export const passwordResetConfirmSchema = z.object({
 export const rememberLoginSchema = loginSchema.extend({
   rememberMe: z.boolean().optional(),
 });
+
+export const galleryCreateSchema = z.object({
+  title: z.string().min(2).max(200),
+  slug: z.string().min(2).max(120).regex(/^[\p{L}\p{M}\p{N}-]+$/u).optional(),
+  description: z.string().max(2000).optional().nullable(),
+  coverImage: z.string().max(4000).optional().nullable(),
+  eventDate: z.coerce.date().nullish(),
+  location: z.string().max(200).optional().nullable(),
+  status: z.enum(["DRAFT", "PUBLISHED"]).default("DRAFT"),
+});
+
+export const galleryUpdateSchema = galleryCreateSchema.partial();
+
+export const galleryImageSchema = z.object({
+  url: z.string().min(1).max(4000),
+  thumbUrl: z.string().max(4000).optional().nullable(),
+  alt: z.string().max(200).optional().nullable(),
+  caption: z.string().max(500).optional().nullable(),
+  credit: z.string().max(120).optional().nullable(),
+  width: z.number().int().positive().optional().nullable(),
+  height: z.number().int().positive().optional().nullable(),
+  size: z.number().int().positive().optional().nullable(),
+  mime: z.string().max(50).optional().nullable(),
+  sortOrder: z.number().int().min(0).default(0),
+});
+
+export const pollOptionSchema = z.object({
+  id: z.string().min(1),
+  text: z.string().min(1).max(200),
+});
+
+export const pollCreateSchema = z.object({
+  question: z.string().min(5).max(500),
+  slug: z.string().min(2).max(120).regex(/^[\p{L}\p{M}\p{N}-]+$/u).optional(),
+  description: z.string().max(2000).optional().nullable(),
+  options: z.array(pollOptionSchema).min(2).max(10),
+  status: z.enum(["DRAFT", "ACTIVE", "CLOSED"]).default("ACTIVE"),
+  expiresAt: z.coerce.date().nullish(),
+});
+
+export const pollUpdateSchema = pollCreateSchema.partial();
+
+export const pollVoteSchema = z.object({
+  optionId: z.string().min(1),
+});

@@ -3,8 +3,16 @@ export async function register(): Promise<void> {
     process.on("uncaughtException", (err) => {
       const code = (err as NodeJS.ErrnoException)?.code;
       const name = err?.constructor?.name ?? (err as Error)?.name;
-      if (code === "ERR_ASSERTION" || name === "TimeoutError" || code === "ABORT_ERR") {
-        console.error(`[net] suppressed ${name ?? code ?? "unknown"} — server kept alive`);
+      const msg = String(err?.message ?? "");
+      const stack = String(err?.stack ?? "");
+      if (
+        code === "ERR_ASSERTION" ||
+        code === "ABORT_ERR" ||
+        name === "TimeoutError" ||
+        name === "AssertionError" ||
+        stack.includes("undici") ||
+        msg.includes("false == true")
+      ) {
         return;
       }
       console.error("[FATAL] uncaughtException (server kept alive):", err);

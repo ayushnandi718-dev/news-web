@@ -508,3 +508,71 @@ model NewsTip {
 
   @@index([status, createdAt])
 }
+
+model Gallery {
+  id          String         @id @default(cuid())
+  slug        String         @unique
+  title       String
+  description String?
+  coverImage  String?
+  eventDate   DateTime?
+  location    String?
+  status      String         @default("DRAFT")
+  photoCount  Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  images      GalleryImage[]
+
+  @@index([status, createdAt])
+  @@index([slug])
+}
+
+model GalleryImage {
+  id        String   @id @default(cuid())
+  galleryId String
+  url       String
+  thumbUrl  String?
+  alt       String?
+  caption   String?
+  credit    String?
+  width     Int?
+  height    Int?
+  size      Int?
+  mime      String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  gallery   Gallery  @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+
+  @@index([galleryId])
+  @@index([galleryId, sortOrder])
+}
+
+model Poll {
+  id            String     @id @default(cuid())
+  slug          String     @unique
+  question      String
+  description   String?
+  options       Json
+  status        String     @default("ACTIVE")
+  expiresAt     DateTime?
+  totalVotes    Int        @default(0)
+  createdBy     String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  votes         PollVote[]
+
+  @@index([status, createdAt])
+  @@index([slug])
+}
+
+model PollVote {
+  id          String   @id @default(cuid())
+  pollId      String
+  optionId    String
+  fingerprint String
+  createdAt   DateTime @default(now())
+  poll        Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, fingerprint])
+  @@index([pollId])
+}

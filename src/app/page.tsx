@@ -9,6 +9,7 @@ import Newsletter from "@/components/Newsletter";
 import WeatherCard from "@/components/WeatherCard";
 import LiveLatest from "@/components/LiveLatest";
 import AdSlot from "@/components/AdSlot";
+import PollWidget from "@/components/PollWidget";
 import { AdBannerTop, AdInArticle, AdSidebar } from "@/components/GoogleAdSense";
 import { HOME_SECTION_SLUGS, bnLabel, BRAND, siteUrl, brandLogoUrl } from "@/lib/brand";
 import { generateWebSiteSchema } from "@/lib/seo";
@@ -174,6 +175,7 @@ export default async function HomePage() {
           <TrendingList items={trending.items} max={5} />
           <AdSlot placement="HOME_SIDEBAR" />
           <AdSidebar />
+          <PollWidget />
           {featuredLinkStrip()}
         </aside>
       </div>

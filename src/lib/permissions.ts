@@ -52,6 +52,12 @@ export const PERMISSIONS = [
   "analytics.view",
   "analytics.manage",
   "settings.manage",
+  "gallery.create",
+  "gallery.edit",
+  "gallery.delete",
+  "poll.create",
+  "poll.edit",
+  "poll.delete",
   "system.admin",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
@@ -113,6 +119,12 @@ const MATRIX: Record<Role, Permission[]> = {
     "analytics.view",
     "analytics.manage",
     "settings.manage",
+    "gallery.create",
+    "gallery.edit",
+    "gallery.delete",
+    "poll.create",
+    "poll.edit",
+    "poll.delete",
   ],
   EDITOR: [
     ...EDITORIAL_CORE,
@@ -148,6 +160,10 @@ const MATRIX: Record<Role, Permission[]> = {
     "inbox.manage",
     "analytics.view",
     "user.view",
+    "gallery.create",
+    "gallery.edit",
+    "poll.create",
+    "poll.edit",
   ],
   REPORTER: [
     ...EDITORIAL_CORE,
@@ -253,4 +269,12 @@ export function canManageUsers(session: { role: string }): boolean {
 
 export function canManageSystem(session: { role: string }): boolean {
   return can(session.role, "system.admin");
+}
+
+export function canManageGalleries(session: { role: string }): boolean {
+  return can(session.role, "gallery.edit");
+}
+
+export function canManagePolls(session: { role: string }): boolean {
+  return can(session.role, "poll.edit");
 }

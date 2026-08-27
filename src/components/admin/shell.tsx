@@ -30,6 +30,8 @@ import {
   IconLifeBuoy,
   IconMegaphone,
   IconBell,
+  IconGallery,
+  IconPoll,
 } from "./icons";
 
 interface NavItem {
@@ -87,6 +89,8 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
   {
     label: "Community",
     items: [
+      { href: "/admin/gallery", label: "Photo Gallery", icon: IconGallery, permission: "gallery.create" },
+      { href: "/admin/polls", label: "Polls & Surveys", icon: IconPoll, permission: "poll.create" },
       { href: "/admin/obituaries", label: "Obituaries", icon: IconComment },
       { href: "/admin/tips", label: "News Tips", icon: IconBell },
     ],
