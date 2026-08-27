@@ -22,6 +22,7 @@ interface Poll {
 export default function PollVote({ poll }: { poll: Poll }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [voted, setVoted] = useState(false);
+  const [votedOption, setVotedOption] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<Poll | null>(null);
@@ -42,6 +43,7 @@ export default function PollVote({ poll }: { poll: Poll }) {
       });
       const j = await r.json();
       if (j.ok) {
+        setVotedOption(selected);
         setVoted(true);
         setResult(j.data.poll);
       } else {
@@ -60,17 +62,24 @@ export default function PollVote({ poll }: { poll: Poll }) {
       {data.description && <p className="mt-1 text-xs text-slate-500">{data.description}</p>}
       <div className="mt-3 space-y-2">
         {data.options.map((opt) => {
-          const pct = data.totalVotes > 0 ? Math.round(((opt.votes || 0) / data.totalVotes) * 100) : 0;
+          const optVotes = opt.votes || 0;
+          const pct = data.totalVotes > 0 ? Math.round((optVotes / data.totalVotes) * 100) : 0;
+          const isVotedOption = votedOption === opt.id;
           return (
-            <label key={opt.id} className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition ${selected === opt.id ? "border-brand bg-brand/5" : "border-slate-200 hover:border-slate-300"} ${showResults ? "cursor-default" : ""}`}>
+            <label key={opt.id} className={`flex items-center gap-3 rounded-lg border p-3 transition ${showResults ? "cursor-default" : "cursor-pointer"} ${selected === opt.id && !showResults ? "border-brand bg-brand/5" : "border-slate-200 hover:border-slate-300"}`}>
               {showResults ? (
                 <div className="relative h-4 flex-1">
                   <div className="absolute inset-0 overflow-hidden rounded-full bg-slate-100">
-                    <div className="h-full rounded-full bg-brand/20 transition-all" style={{ width: `${pct}%` }} />
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${isVotedOption ? "bg-brand/40" : "bg-brand/15"}`}
+                      style={{ width: `${pct}%` }}
+                    />
                   </div>
                   <div className="relative flex items-center justify-between px-1 text-xs">
-                    <span className="font-medium text-slate-700">{opt.text}</span>
-                    <span className="font-semibold text-brand">{pct}%</span>
+                    <span className={`font-medium ${isVotedOption ? "text-brand font-bold" : "text-slate-700"}`}>
+                      {opt.text} {isVotedOption && <span className="text-[10px]">(আপনি)</span>}
+                    </span>
+                    <span className={`font-semibold ${isVotedOption ? "text-brand" : "text-slate-500"}`}>{optVotes} ({pct}%)</span>
                   </div>
                 </div>
               ) : (

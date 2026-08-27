@@ -43,7 +43,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       db.pollVote.create({ data: { pollId: poll.id, optionId, fingerprint: fp } }),
       db.poll.update({ where: { id: poll.id }, data: { options, totalVotes: { increment: 1 } } }),
     ]);
-    return ok({ poll });
+    const updated = await db.poll.findUnique({ where: { id: poll.id } });
+    return ok({ poll: updated });
   } catch (e) {
     return handleError(e);
   }
