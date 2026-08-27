@@ -7,15 +7,22 @@ export const dynamic = "force-dynamic";
 
 /**
  * Public single advertisement detail. Returns only reader-safe fields.
- * Money, priority, payment info, email — NEVER exposed.
+ * Gates on ACTIVE + non-deleted + date window so drafts/paused/deleted
+ * ads are never served publicly. Money/priority/payment NEVER exposed.
  */
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await ctx.params;
     const decoded = decodeSlug(slug);
 
-    const ad = await db.advertisement.findUnique({
-      where: { slug: decoded },
+    const ad = await db.advertisement.findFirst({
+      where: {
+        slug: decoded,
+        status: "ACTIVE",
+        deletedAt: null,
+        OR: [{ startDate: null }, { startDate: { lte: new Date() } }],
+        AND: [{ OR: [{ endDate: null }, { endDate: { gte: new Date() } }] }],
+      },
       select: {
         id: true,
         slug: true,

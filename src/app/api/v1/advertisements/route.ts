@@ -63,10 +63,10 @@ export async function GET(req: NextRequest) {
     // Strip private fields before sending
     const items = scored.slice(0, limit).map(({ _score, price, impressions, ...pub }) => pub);
 
-    // Fire-and-forget impression tracking
-    if (ads.length) {
+    // Fire-and-forget impression tracking — only for ads actually served
+    if (items.length) {
       db.advertisement.updateMany({
-        where: { id: { in: ads.map((a) => a.id) } },
+        where: { id: { in: items.map((a: { id: string }) => a.id) } },
         data: { impressions: { increment: 1 } },
       }).catch(() => {});
     }
