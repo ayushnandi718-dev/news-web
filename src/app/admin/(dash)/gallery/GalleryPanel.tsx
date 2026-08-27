@@ -92,20 +92,22 @@ export default function AdminGallery() {
   }
 
   async function handleImageUpload(galleryId: string, file: File) {
+    if (!galleryId || !file) return;
     setUploading(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
       const uploadRes = await fetch("/api/v1/admin/media", { method: "POST", body: formData });
+      if (!uploadRes.ok) throw new Error(`Upload failed (HTTP ${uploadRes.status})`);
       const uploadJson = await uploadRes.json();
       if (!uploadJson.ok) throw new Error(uploadJson.error || "Upload failed");
-      const url = uploadJson.data.media?.url;
-      if (!url) throw new Error("No URL returned from upload");
+      const url = uploadJson.data?.media?.url;
+      if (!url || typeof url !== "string") throw new Error("No URL returned from upload");
       const thumbUrl = url.replace(/(\.\w+)$/, "_thumb.webp");
       const imgRes = await fetch(`/api/v1/admin/galleries/${galleryId}/images`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ url, thumbUrl, alt: file.name.replace(/\.\w+$/, ""), mime: file.type, size: file.size }),
+        body: JSON.stringify({ url, thumbUrl, alt: (file.name || "image").replace(/\.\w+$/, ""), mime: file.type, size: file.size }),
       });
       const imgJson = await imgRes.json();
       if (!imgJson.ok) throw new Error(imgJson.error || "Failed to add image to gallery");
