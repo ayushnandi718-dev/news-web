@@ -4,6 +4,7 @@ import { requirePerm } from "@/lib/auth";
 import { pollCreateSchema } from "@/lib/validation";
 import { slugify } from "@/lib/text";
 import { ok, handleError } from "@/lib/api";
+import { publishEvent } from "@/lib/events";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,7 @@ export async function POST(req: Request) {
         expiresAt: body.expiresAt,
       },
     });
+    publishEvent({ type: "poll.updated" });
     return ok(poll);
   } catch (e) {
     return handleError(e);

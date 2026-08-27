@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useNewsEvents } from "@/hooks/useNewsEvents";
 import PollVote from "@/components/PollVote";
 
 interface PollOption {
@@ -26,13 +27,21 @@ export default function PollsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch("/api/v1/polls")
-      .then((r) => r.json())
-      .then((j) => { if (j.ok) setPolls(j.data); else setError(j.error || "Failed to load polls"); })
-      .catch(() => setError("Network error"))
-      .finally(() => setLoading(false));
+  const load = useCallback(async () => {
+    try {
+      const r = await fetch("/api/v1/polls", { cache: "no-store" });
+      const j = await r.json();
+      if (j.ok) { setPolls(j.data); setError(null); }
+      else setError(j.error || "Failed to load polls");
+    } catch { setError("Network error"); }
+    setLoading(false);
   }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  useNewsEvents((e) => {
+    if (e.type === "poll.updated") load();
+  });
 
   if (loading) return <div className="text-center text-sm text-slate-400 py-8">Loading...</div>;
   if (error) return <div className="text-center text-sm text-red-500 py-8">{error}</div>;

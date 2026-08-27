@@ -4,6 +4,7 @@ import { requirePerm } from "@/lib/auth";
 import { pollUpdateSchema } from "@/lib/validation";
 import { slugify } from "@/lib/text";
 import { ok, handleError } from "@/lib/api";
+import { publishEvent } from "@/lib/events";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       data.slug = slug;
     }
     const poll = await db.poll.update({ where: { id }, data });
+    publishEvent({ type: "poll.updated" });
     return ok(poll);
   } catch (e) {
     return handleError(e);
@@ -48,6 +50,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     await requirePerm("poll.delete");
     const { id } = await params;
     await db.poll.delete({ where: { id } });
+    publishEvent({ type: "poll.updated" });
     return ok({ deleted: true });
   } catch (e) {
     return handleError(e);

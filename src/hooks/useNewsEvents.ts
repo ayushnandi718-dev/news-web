@@ -25,7 +25,7 @@ export interface LiveUpdatedEvent {
   hasActive: boolean;
 }
 
-export type NewsSocketEvent = LivePublishedEvent | BreakingEvent | AdsEvent | LiveUpdatedEvent | { type: "heartbeat" };
+export type NewsSocketEvent = LivePublishedEvent | BreakingEvent | AdsEvent | LiveUpdatedEvent | { type: "poll.updated" } | { type: "heartbeat" };
 
 type Listener = (e: NewsSocketEvent) => void;
 
@@ -51,7 +51,7 @@ function connect() {
     sharedEs = null;
     retryTimer = setTimeout(connect, 3000);
   };
-  const types = ["article.published", "breaking.updated", "ads.updated", "live.updated"];
+  const types = ["article.published", "breaking.updated", "ads.updated", "live.updated", "poll.updated"];
   for (const t of types) {
     es.addEventListener(t, (ev) => {
       try {

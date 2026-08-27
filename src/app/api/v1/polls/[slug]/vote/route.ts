@@ -4,6 +4,7 @@ import { decodeSlug } from "@/lib/text";
 import { pollVoteSchema } from "@/lib/validation";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { ok, handleError } from "@/lib/api";
+import { publishEvent } from "@/lib/events";
 import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +45,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       db.poll.update({ where: { id: poll.id }, data: { options, totalVotes: { increment: 1 } } }),
     ]);
     const updated = await db.poll.findUnique({ where: { id: poll.id } });
+    publishEvent({ type: "poll.updated" });
     return ok({ poll: updated });
   } catch (e) {
     return handleError(e);

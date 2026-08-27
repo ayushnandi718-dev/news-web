@@ -1,9 +1,22 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useTheme } from "./ThemeProvider";
 
 export default function ThemeToggle() {
   const { theme, toggle } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) return (
+    <button
+      aria-label="থিম পরিবর্তন"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-brand"
+    >
+      <div className="h-4 w-4" />
+    </button>
+  );
+
   return (
     <button
       onClick={toggle}

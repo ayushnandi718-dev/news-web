@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useNewsEvents } from "@/hooks/useNewsEvents";
 import PollVote from "./PollVote";
 
 interface PollOption {
@@ -17,19 +18,28 @@ interface Poll {
   options: PollOption[];
   totalVotes: number;
   expiresAt: string | null;
+  status?: string;
 }
 
 export default function PollWidget() {
   const [poll, setPoll] = useState<Poll | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetch("/api/v1/polls")
-      .then((r) => r.json())
-      .then((j) => { if (j.ok && j.data.length > 0) setPoll(j.data[0]); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  const load = useCallback(async () => {
+    try {
+      const r = await fetch("/api/v1/polls", { cache: "no-store" });
+      const j = await r.json();
+      if (j.ok && j.data.length > 0) setPoll(j.data[0]);
+      else setPoll(null);
+    } catch {}
+    setLoading(false);
   }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  useNewsEvents((e) => {
+    if (e.type === "poll.updated") load();
+  });
 
   if (loading) return null;
   if (!poll) return null;

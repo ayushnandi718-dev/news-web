@@ -7,6 +7,7 @@ export type NewsEvent =
   | { type: "breaking.updated" }
   | { type: "live.updated"; hasActive: boolean }
   | { type: "ads.updated" }
+  | { type: "poll.updated" }
   | { type: "heartbeat" };
 
 const globalForBus = globalThis as unknown as { newsBus?: EventEmitter };
