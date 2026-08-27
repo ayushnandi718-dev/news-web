@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useUI } from "@/components/ui/overlay";
 
 interface PollOption {
   id: string;
@@ -21,6 +22,7 @@ interface Poll {
 }
 
 export default function AdminPolls() {
+  const { confirm } = useUI();
   const [polls, setPolls] = useState<Poll[]>([]);
   const [filter, setFilter] = useState<"ALL" | "ACTIVE" | "CLOSED" | "DRAFT">("ALL");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -64,7 +66,8 @@ export default function AdminPolls() {
   }
 
   async function remove(id: string) {
-    if (!window.confirm("Are you sure you want to delete this poll? This action cannot be undone.")) return;
+    const ok = await confirm({ title: "Delete poll?", message: "This poll and all its votes will be permanently deleted. This action cannot be undone.", danger: true, confirmText: "Delete" });
+    if (!ok) return;
     setBusyId(id);
     try {
       await fetch(`/api/v1/admin/polls/${id}`, { method: "DELETE" });

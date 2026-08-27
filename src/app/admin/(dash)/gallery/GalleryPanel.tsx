@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useUI } from "@/components/ui/overlay";
 
 interface GalleryImage {
   id: string;
@@ -29,6 +30,7 @@ interface Gallery {
 }
 
 export default function AdminGallery() {
+  const { confirm } = useUI();
   const [galleries, setGalleries] = useState<Gallery[]>([]);
   const [filter, setFilter] = useState<"ALL" | "DRAFT" | "PUBLISHED">("ALL");
   const [search, setSearch] = useState("");
@@ -70,7 +72,7 @@ export default function AdminGallery() {
   }
 
   async function remove(id: string) {
-    if (!window.confirm("Are you sure you want to delete this gallery? This action cannot be undone.")) return;
+    if (!(await confirm({ title: "Delete gallery?", message: "This gallery and all its photos will be permanently deleted. This action cannot be undone.", danger: true, confirmText: "Delete" }))) return;
     setBusyId(id);
     try {
       await fetch(`/api/v1/admin/galleries/${id}`, { method: "DELETE" });
@@ -114,7 +116,7 @@ export default function AdminGallery() {
   }
 
   async function removeImage(galleryId: string, imageId: string) {
-    if (!window.confirm("Are you sure you want to delete this photo?")) return;
+    if (!(await confirm({ title: "Delete photo?", message: "This photo will be permanently removed from the gallery.", danger: true, confirmText: "Delete" }))) return;
     await fetch(`/api/v1/admin/galleries/${galleryId}/images`, {
       method: "DELETE",
       headers: { "content-type": "application/json" },
@@ -245,6 +247,7 @@ function GalleryEditor({
   uploading: boolean;
   onCancel: () => void;
 }) {
+  const { confirm } = useUI();
   const [title, setTitle] = useState(gallery?.title || "");
   const [description, setDescription] = useState(gallery?.description || "");
   const [location, setLocation] = useState(gallery?.location || "");
@@ -301,7 +304,7 @@ function GalleryEditor({
 
   async function removeImage(imageId: string) {
     if (!galleryId) return;
-    if (!window.confirm("Are you sure you want to delete this photo?")) return;
+    if (!(await confirm({ title: "Delete photo?", message: "This photo will be permanently removed from the gallery.", danger: true, confirmText: "Delete" }))) return;
     await fetch(`/api/v1/admin/galleries/${galleryId}/images`, {
       method: "DELETE",
       headers: { "content-type": "application/json" },
