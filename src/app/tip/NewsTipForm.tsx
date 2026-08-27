@@ -21,7 +21,7 @@ export default function NewsTipForm() {
       const fd = new FormData();
       fd.append("file", photo);
       try {
-        const up = await fetch("/api/v1/admin/media", { method: "POST", body: fd });
+        const up = await fetch("/api/v1/public/media", { method: "POST", body: fd });
         const j = await up.json();
         if (j.ok) imageUrl = j.data.url;
       } catch {}

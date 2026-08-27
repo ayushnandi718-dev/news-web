@@ -107,7 +107,6 @@ export const NAV_CATEGORIES: Array<{ href: string; label: string; accent?: boole
 ];
 
 export const NAV_OTHER: Array<{ href: string; label: string }> = [
-  { href: "/admin", label: "নিউজরুম" },
   { href: "/weather", label: "আবহাওয়া" },
   { href: "/market", label: "মার্কেট আপডেট" },
   { href: "/trending", label: "ট্রেন্ডিং" },

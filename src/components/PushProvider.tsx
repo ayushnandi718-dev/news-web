@@ -52,8 +52,8 @@ export function PushProvider({ children }: { children: ReactNode }) {
     if (!supported) return;
     const reg = await navigator.serviceWorker.ready;
 
-    // Get VAPID key from server
-    const res = await fetch("/api/v1/admin/push");
+    // Get VAPID key from the public config endpoint (the admin API is gated).
+    const res = await fetch("/api/v1/push/config");
     const { data } = await res.json();
     if (!data.vapidPublicKey) return;
 

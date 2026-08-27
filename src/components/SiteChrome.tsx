@@ -87,12 +87,6 @@ export function SiteHeader({ settings }: { settings?: SiteSettings }) {
             >
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
             </Link>
-            <Link
-              href="/admin"
-              className="flex h-9 shrink-0 items-center bg-brand px-2.5 text-[11px] font-bold text-white transition hover:bg-brand-dark sm:h-auto sm:py-1.5 sm:text-xs"
-            >
-              নিউজরুম
-            </Link>
           </div>
 
           {/* Category nav — desktop/tablet only; mobile uses the drawer + bottom nav */}
@@ -171,7 +165,7 @@ function SearchForm() {
 const FOOTER_COLUMNS = [
   { title: "সংবাদ", links: NAV_MAIN },
   { title: "বিভাগ", links: NAV_CATEGORIES },
-  { title: "আরও", links: NAV_OTHER.filter((l) => l.href !== "/admin") },
+  { title: "আরও", links: NAV_OTHER },
   { title: "আইনি", links: NAV_LEGAL },
 ];
 
