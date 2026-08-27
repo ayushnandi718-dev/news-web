@@ -84,16 +84,16 @@ export interface PricingRow {
 }
 
 export const DEFAULT_RATES: PricingRow[] = [
-  { type: "HOME_BANNER", placement: "HOME_TOP", size: "MEDIUM", basePrice: 500, active: true },
-  { type: "HOME_BANNER", placement: "HOME_TOP", size: "FULL_WIDTH", basePrice: 800, active: true },
-  { type: "HOME_BANNER", placement: "HOME_SIDEBAR", size: "SMALL", basePrice: 200, active: true },
-  { type: "HOME_BANNER", placement: "HOME_SIDEBAR", size: "MEDIUM", basePrice: 350, active: true },
-  { type: "CATEGORY_BANNER", placement: "CATEGORY_TOP", size: "MEDIUM", basePrice: 300, active: true },
-  { type: "CATEGORY_BANNER", placement: "CATEGORY_TOP", size: "FULL_WIDTH", basePrice: 450, active: true },
-  { type: "SPONSORED_NEWS", placement: "OTHER", size: "MEDIUM", basePrice: 600, active: true },
-  { type: "BREAKING_TICKER", placement: "OTHER", size: "SMALL", basePrice: 250, active: true },
-  { type: "LIVE_STREAM_SPONSORSHIP", placement: "OTHER", size: "LARGE", basePrice: 700, active: true },
-  { type: "SOCIAL_MEDIA_PROMOTION", placement: "OTHER", size: "SMALL", basePrice: 300, active: true },
+  { type: "HOME_BANNER", placement: "HOME_TOP", size: "MEDIUM", basePrice: 300, active: true },
+  { type: "HOME_BANNER", placement: "HOME_TOP", size: "FULL_WIDTH", basePrice: 500, active: true },
+  { type: "HOME_BANNER", placement: "HOME_SIDEBAR", size: "SMALL", basePrice: 120, active: true },
+  { type: "HOME_BANNER", placement: "HOME_SIDEBAR", size: "MEDIUM", basePrice: 200, active: true },
+  { type: "CATEGORY_BANNER", placement: "CATEGORY_TOP", size: "MEDIUM", basePrice: 180, active: true },
+  { type: "CATEGORY_BANNER", placement: "CATEGORY_TOP", size: "FULL_WIDTH", basePrice: 280, active: true },
+  { type: "SPONSORED_NEWS", placement: "OTHER", size: "MEDIUM", basePrice: 400, active: true },
+  { type: "BREAKING_TICKER", placement: "OTHER", size: "SMALL", basePrice: 150, active: true },
+  { type: "LIVE_STREAM_SPONSORSHIP", placement: "OTHER", size: "LARGE", basePrice: 450, active: true },
+  { type: "SOCIAL_MEDIA_PROMOTION", placement: "OTHER", size: "SMALL", basePrice: 180, active: true },
 ];
 
 /** Duration multiplier: price scales with campaign length (days). */
