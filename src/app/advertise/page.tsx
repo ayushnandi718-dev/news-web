@@ -16,7 +16,7 @@ import {
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "বিজ্ঞাপন দিন",
+  title: `বিজ্ঞাপন দিন — ${BRAND.bn}`,
   description: `${BRAND.bn}-এ বিজ্ঞাপন দিয়ে আলিপুরদুয়ার, ডুয়ার্স ও উত্তরবঙ্গের হাজারো বাংলা পাঠকের কাছে আপনার ব্যবসা পৌঁছান।`,
 };
 

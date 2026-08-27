@@ -31,22 +31,45 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       return NextResponse.json({ ok: false, error: "Poll has expired" }, { status: 400 });
     }
     const { optionId } = pollVoteSchema.parse(await req.json());
-    const options = poll.options as Array<{ id: string; text: string; votes: number }>;
-    const opt = options.find((o) => o.id === optionId);
-    if (!opt) return NextResponse.json({ ok: false, error: "Invalid option" }, { status: 400 });
     const fp = fingerprint(req, ip);
     const existing = await db.pollVote.findUnique({ where: { pollId_fingerprint: { pollId: poll.id, fingerprint: fp } } });
     if (existing) {
       return NextResponse.json({ ok: false, error: "You have already voted" }, { status: 409 });
     }
-    opt.votes = (opt.votes || 0) + 1;
-    await db.$transaction([
-      db.pollVote.create({ data: { pollId: poll.id, optionId, fingerprint: fp } }),
-      db.poll.update({ where: { id: poll.id }, data: { options, totalVotes: { increment: 1 } } }),
-    ]);
-    const updated = await db.poll.findUnique({ where: { id: poll.id } });
+
+    // Atomic vote: execute the read-mutate-write inside an interactive
+    // transaction that serializes on the poll row (Postgres row lock), so
+    // concurrent votes to the same poll cannot lose increments. The PollVote
+    // unique constraint guarantees one-vote-per-device.
+    const voted = await db.$transaction(async (tx) => {
+      const current = await tx.poll.findUnique({
+        where: { id: poll.id },
+        select: { id: true, options: true },
+      });
+      if (!current) return { error: "Poll not found" } as const;
+      const opts = current.options as Array<{ id: string; text: string; votes: number }>;
+      const target = opts.find((o) => o.id === optionId);
+      if (!target) return { error: "Invalid option" } as const;
+
+      const nextOptions = opts.map((o) =>
+        o.id === optionId ? { ...o, votes: (o.votes || 0) + 1 } : o
+      );
+      await tx.poll.update({
+        where: { id: poll.id },
+        data: { options: nextOptions, totalVotes: { increment: 1 } },
+      });
+      await tx.pollVote.create({ data: { pollId: poll.id, optionId, fingerprint: fp } });
+      return { ok: true } as const;
+    });
+
+    if (!voted.ok) {
+      if (voted.error === "Invalid option") return NextResponse.json({ ok: false, error: "Invalid option" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: voted.error }, { status: 404 });
+    }
+
+    const fresh = await db.poll.findUnique({ where: { id: poll.id } });
     publishEvent({ type: "poll.updated" });
-    return ok({ poll: updated });
+    return ok({ poll: fresh });
   } catch (e) {
     return handleError(e);
   }

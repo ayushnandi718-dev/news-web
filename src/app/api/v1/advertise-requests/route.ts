@@ -39,6 +39,14 @@ export async function POST(req: NextRequest) {
       if (typeof value === "string") data[key] = value;
     }
 
+    // Speed trap: a human takes a few seconds minimum to fill the form.
+    // Bots submit instantly. Reject if filled in under 3 seconds.
+    const MIN_FILL_MS = 3000;
+    const startedAt = data._startedAt ? Number(data._startedAt) : 0;
+    if (startedAt && Date.now() - startedAt < MIN_FILL_MS) {
+      return apiError("Request pathata ektu somoy lagano holo — thodi dhire try karo.", 400);
+    }
+
     const body = advertiseRequestSchema.parse(data);
     if (body.website) return apiError("Spam detected", 400);
 

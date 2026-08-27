@@ -1,5 +1,65 @@
 # Project Handover Guide - News-Web
 
+> **Platform**: "Dooarser Khabar" — Bengali-local news for Alipurduar, Dooars & North Bengal.
+> Repo: `https://github.com/ayushnandi718-dev/news-web` (public, branch `main`)
+
+---
+
+## Quick Start (for the client / new developer)
+
+### 1. Run it locally
+```bash
+npm install            # install dependencies
+copy .env.example .env # then fill in real values (see DEPLOYMENT.md)
+npm run db:migrate     # apply DB schema to Neon Postgres
+npm run db:seed        # seed categories, admin user, default settings
+npm run dev            # start dev server at http://localhost:3000
+```
+
+### 2. Log in to the admin panel
+- URL: `http://localhost:3000/admin`
+- Default login: `admin@newsroom.local` / `admin123`
+- **CHANGE these immediately** by setting `ADMIN_EMAIL` / `ADMIN_PASSWORD` in `.env` and re-running `npm run db:seed`.
+- Sessions last 12h by default, 30 days when "Remember me" is checked.
+
+### 3. Production build
+```bash
+npm run build   # confirmed working — compiles all routes (incl. ad routes)
+npm run start   # serve the built app
+```
+
+### 4. Tests
+```bash
+npx vitest run  # 419 tests
+npx tsc --noEmit # type check
+```
+
+---
+
+## What the site does (feature list)
+
+- **News**: articles with categories (Alipurduar / Dooars / North Bengal), regions, tags,
+  rich text, scheduling, breaking news, trending, latest, search.
+- **Photo Gallery**: admin uploads/handles images, cover image, captions, lightbox viewer,
+  lazily-loaded masonry layout. Uses the **custom confirm dialog** (not browser `confirm()`).
+- **Polls / Surveys**: admin creates choose-one polls; visitors vote once per device
+  (spam-protected via IP+UA fingerprint, rate-limited); results show live via SSE
+  (`poll.updated` event) — no page reload needed.
+- **Ads**: custom ad placements with pricing (~40% off recently), weighted rotation,
+  impression/click tracking, reader "advertise with us" request form (with honeypot +
+  speed-trap spam protection). Ads only show when ACTIVE, not deleted, and in-date.
+- **User features**: comments, save/bookmark, newsletter (SMTP), push notifications (VAPID).
+- **Extras**: weather, market quotes, blood bank, obituaries, tips, live streams, RSS ingestion.
+
+## Monetization checklist (currently placeholders!)
+- **Google AdSense**: publisher ID + slot IDs in the code are **`XXXX` / dummy `1111111111`** — NOT live.
+  Replace them and add your site to AdSense before counting on ad revenue.
+- **Sentry**: DSNs are placeholders — leave blank or add your real DSN to `.env`.
+- **PWA icons**: currently red "DK" placeholders — replace with real brand icons.
+- **Vercel deploy**: deferred — see DEPLOYMENT.md when ready.
+
+---
+
 ## Critical Security Actions (DO IMMEDIATELY)
 
 ### 1. Change Default Admin Credentials

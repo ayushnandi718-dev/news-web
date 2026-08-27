@@ -28,7 +28,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const data: Record<string, unknown> = {};
     if (body.question !== undefined) data.question = body.question;
     if (body.description !== undefined) data.description = body.description;
-    if (body.options !== undefined) data.options = body.options;
+    if (body.options !== undefined) {
+      // Preserve existing vote counts by option id so an admin editing
+      // option text/labels doesn't silently zero out the accumulated votes.
+      const existing = await db.poll.findUnique({ where: { id }, select: { options: true } });
+      const existingOptions = (existing?.options ?? []) as Array<{ id: string; votes?: number }>;
+      const counts = new Map(existingOptions.map((o) => [o.id, o.votes || 0]));
+      data.options = body.options.map((o) => ({ ...o, votes: counts.get(o.id) ?? 0 }));
+    }
     if (body.status !== undefined) data.status = body.status;
     if (body.expiresAt !== undefined) data.expiresAt = body.expiresAt;
     if (body.slug !== undefined) {

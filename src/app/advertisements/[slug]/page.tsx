@@ -11,8 +11,14 @@ export const revalidate = 300;
 
 const getAd = unstable_cache(
   async (slug: string) => {
-    return db.advertisement.findUnique({
-      where: { slug: decodeSlug(slug) },
+    const ad = await db.advertisement.findFirst({
+      where: {
+        slug: decodeSlug(slug),
+        status: "ACTIVE",
+        deletedAt: null,
+        OR: [{ startDate: null }, { startDate: { lte: new Date() } }],
+        AND: [{ OR: [{ endDate: null }, { endDate: { gte: new Date() } }] }],
+      },
       select: {
         id: true,
         slug: true,
@@ -26,6 +32,14 @@ const getAd = unstable_cache(
         phone: true,
       },
     });
+    // Track page view as an impression (fire-and-forget)
+    if (ad) {
+      db.advertisement.update({
+        where: { id: ad.id },
+        data: { impressions: { increment: 1 } },
+      }).catch(() => {});
+    }
+    return ad;
   },
   ["advertisements:detail"],
   { revalidate: 300, tags: ["ads"] }

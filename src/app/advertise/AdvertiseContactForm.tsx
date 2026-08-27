@@ -14,6 +14,7 @@ const ACCEPT = "image/jpeg,image/png,image/webp,image/avif,image/gif";
  * as PENDING_REVIEW. Nothing gets published automatically.
  */
 export default function AdvertiseContactForm() {
+  const [startedAt] = useState(() => Date.now());
   const [form, setForm] = useState({
     name: "",
     businessName: "",
@@ -36,6 +37,15 @@ export default function AdvertiseContactForm() {
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null;
+    const MAX = 8 * 1024 * 1024;
+    if (f && f.size > MAX) {
+      setFile(null);
+      setPreview(null);
+      setErrMsg("ছবির সাইজ ৮ MB-এর বেশি — ছোট ছবি বেছে নিন।");
+      setState("error");
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
     setFile(f);
     if (f) {
       const url = URL.createObjectURL(f);
@@ -57,6 +67,7 @@ export default function AdvertiseContactForm() {
     setErrMsg("");
     try {
       const fd = new FormData();
+      fd.append("_startedAt", String(startedAt));
       for (const [k, v] of Object.entries(form)) {
         if (typeof v === "boolean") fd.append(k, v ? "true" : "");
         else fd.append(k, v);
